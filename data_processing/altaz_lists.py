@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord, EarthLocation, AltAz
 import astropy.units as u
 from astropy.time import Time
 
-injection_file = "endo3_bnspop-LIGO-T2100113-v12.hdf5"
+injection_file = "~/snakepit/multi_messenger_astro/data/gw_data/O3_sensitivity/endo3_bnspop-LIGO-T2100113-v12.hdf5"
 
 with h5py.File(injection_file, 'r') as f:
     N_draw = f.attrs["total_generated"]

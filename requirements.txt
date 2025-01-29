@@ -1,0 +1,11 @@
+numpy
+scipy
+matplotlib
+ligo.gracedb
+astropy
+astropy_healpix
+h5py
+pandas
+pathlib
+re
+tqdm
