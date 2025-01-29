@@ -2,11 +2,11 @@ import numpy as np
 import h5py
 
 
-def load_gravitation_wave_data():
-    injection_file = "../data/gw_data/O3_sensitivity/endo3_bnspop-LIGO-T2100113-v12.hdf5"
+def load_gravitational_wave_data():
+    injection_file = "/home/aki/snakepit/multi_messenger_astro/data/gw_data/O3_sensitivity/endo3_bnspop-LIGO-T2100113-v12.hdf5"
     # injection_file = "endo3_bbhpop-LIGO-T2100113-v12.hdf5"
     
-    gravitation_wave_data = {}
+    gravitational_wave_data = {}
     keys = ["gpstime", "mass1", "mass2", "distance", "inclination", "right_ascension", "declination", "far_gstlal", "far_mbta", "far_pycbc_hyperbank", "far_pycbc_bbh", "altitude", "azimuth"]
     with h5py.File(injection_file, "r") as f:
         N_draw = f.attrs["total_generated"]
@@ -25,18 +25,18 @@ def load_gravitation_wave_data():
   
     alt_source = np.concatenate(
         (
-            np.load("../data/gw_data/alt_array0.npy"),
-            np.load("../data/gw_data/alt_array1.npy"),
-            np.load("../data/gw_data/alt_array2.npy"),
-            np.load("../data/gw_data/alt_array3.npy"),
+            np.load("/home/aki/snakepit/multi_messenger_astro/data/gw_data/alt_array0.npy"),
+            np.load("/home/aki/snakepit/multi_messenger_astro/data/gw_data/alt_array1.npy"),
+            np.load("/home/aki/snakepit/multi_messenger_astro/data/gw_data/alt_array2.npy"),
+            np.load("/home/aki/snakepit/multi_messenger_astro/data/gw_data/alt_array3.npy"),
         )
     )
     az_source = np.concatenate(
         (
-            np.load("../data/gw_data/az_array0.npy"),
-            np.load("../data/gw_data/az_array1.npy"),
-            np.load("../data/gw_data/az_array2.npy"),
-            np.load("../data/gw_data/az_array3.npy"),
+            np.load("/home/aki/snakepit/multi_messenger_astro/data/gw_data/az_array0.npy"),
+            np.load("/home/aki/snakepit/multi_messenger_astro/data/gw_data/az_array1.npy"),
+            np.load("/home/aki/snakepit/multi_messenger_astro/data/gw_data/az_array2.npy"),
+            np.load("/home/aki/snakepit/multi_messenger_astro/data/gw_data/az_array3.npy"),
         )
     )
 
@@ -57,6 +57,6 @@ def load_gravitation_wave_data():
 
     for i in range(len(keys)):
         key = keys[i]
-        gravitation_wave_data[key] = data_np[i]
+        gravitational_wave_data[key] = data_np[i]
 
-    return gravitation_wave_data
+    return gravitational_wave_data

@@ -7,8 +7,8 @@ def neutrino_data():
     """Load and process the neutrino effective areas and event data
     from a .csv file and order them into two seperate dictionaries
     that have keys corresponding to the name of the same .csv file."""
-    effectiveArea_path = Path("../data/neutrino_data/irfs")
-    events_path = Path("../data/neutrino_data/events")
+    effectiveArea_path = Path("/home/aki/snakepit/multi_messenger_astro/data/neutrino_data/irfs")
+    events_path = Path("/home/aki/snakepit/multi_messenger_astro/data/neutrino_data/events")
     dataframes_effectiveArea = {}
     dataframes_events = {}
 
@@ -35,4 +35,5 @@ def neutrino_data():
         key = file_path.stem
         dataframes_events[key] = df
     
-    return {"effective_areas": dataframes_effectiveArea, "events": dataframes_events}
+    neutrino_data = {"effective_areas": dataframes_effectiveArea, "events": dataframes_events}
+    return neutrino_data
