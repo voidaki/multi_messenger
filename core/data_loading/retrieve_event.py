@@ -22,5 +22,3 @@ def retrieve_event(event_name):
 
     skymap = QTable.read(filename)
     return skymap, t_GW, far
-
-print(retrieve_event("S190425z"))

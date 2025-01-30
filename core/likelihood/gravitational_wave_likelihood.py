@@ -8,7 +8,7 @@ from astropy.time import Time
 import pandas as pd
 from tqdm import tqdm
 
-from data_loading.load_process_gw import load_gravitational_wave_data
+from data_loading import load_gravitational_wave_data
 
 gw_data = load_gravitational_wave_data()
 print(gw_data)

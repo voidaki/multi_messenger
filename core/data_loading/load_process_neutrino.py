@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 
-def neutrino_data():
+def load_neutrino_data():
     """Load and process the neutrino effective areas and event data
     from a .csv file and order them into two seperate dictionaries
     that have keys corresponding to the name of the same .csv file."""
