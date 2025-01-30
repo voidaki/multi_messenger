@@ -518,16 +518,6 @@ def P_skyloc_Aeff(declination, epsilon_nu):
     effective_area = filtered_df[0][4]
     return effective_area * (1/epsilon_nu**2) * (4*np.pi)**-1
 
-def neutrino_rate():
-    times1 = np.empty(1)
-    for key in dataframes_events.keys():
-        df = dataframes_events[key]
-        days = df["MJD[days]"]
-        days = np.array(days)
-        times1 = np.concatenate((times1, days))
-    times = np.delete(times1, 0)
-    rate = len(times) / ((np.max(times) - np.min(times)) * 24 * 60 * 60)
-    return rate
 
 if __name__ == "__main__":
     P_Aeffvec = np.vectorize(P_skyloc_Aeff)

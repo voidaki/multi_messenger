@@ -3,3 +3,4 @@ back_ups/
 findmatch/
 ./git_backup.sh
 __pycache__
+.ipynb_checkpoints
