@@ -27,7 +27,7 @@ az_source = gw_data["azimuth"]
 location = EarthLocation(lon=0 * u.deg, lat=0 * u.deg, height=0 * u.m)
 
 
-def volume_localization(skymap, distance, right_asc, declination):
+def volume_localization(skymap, distance, right_ascension, declination):
     """Yields the probability of the 3 dimensional point in space: distance and sky location"""
     uniq = skymap["UNIQ"]
     prob_dens = skymap["PROBDENSITY"]
@@ -38,7 +38,7 @@ def volume_localization(skymap, distance, right_asc, declination):
     level, ipix = ah.uniq_to_level_ipix(uniq)
     nside = ah.level_to_nside(level)  # Lateralization (from uniq to nested)
 
-    ra, dec = right_asc * u.deg, declination * u.deg  # Float into degrees
+    ra, dec = right_ascension * u.deg, declination * u.deg  # Float into degrees
 
     match_ipix = ah.lonlat_to_healpix(
         ra, dec, nside, order="nested"
@@ -57,7 +57,7 @@ def volume_localization(skymap, distance, right_asc, declination):
     return prob
 
 
-def P_signal_GW_t(t_GW, t_s):  # Signal likelihood temporal distribution function
+def temporal_distribution(t_GW, t_s):  # Signal likelihood temporal distribution function
     t_plus = 250
     t_minus = -250
     if t_minus <= t_GW - t_s <= t_plus:
@@ -159,9 +159,7 @@ def far_list(gpstime, distance, right_ascension, declination, mass1, mass2):
     return far_list
 
 
-def P_F(
-    false_alarm_rate, gpstime, distance, right_ascension, declination, mass1, mass2
-):
+def P_F(false_alarm_rate, gpstime, distance, right_ascension, declination, mass1, mass2):
     fars = far_list(gpstime, distance, right_ascension, declination, mass1, mass2)
     if len(fars) == 0:
         return 0
@@ -174,7 +172,7 @@ def P_F(
         return count / len(fars)
 
 
-def P_signal_GW_source(gpstime, distance, ra, dec, M_1, M_2):
+def conditional_source_distribution(gpstime, distance, ra, dec, M_1, M_2):
     """Retuns the source probability distribution for the gravitational wave source."""
     far = match_far(gpstime, distance, ra, dec, M_1, M_2)
     r_max = max(distance_source)
@@ -220,7 +218,7 @@ def P_signal_GW_F(false_alarm_rate):
         if p_far == 0:
             p_source = 0
         else:
-            p_source = P_signal_GW_source(gpstime, r_s, ra, dec, M1, M2)
+            p_source = conditional_source_distribution(gpstime, r_s, ra, dec, M1, M2)
 
         integral_sum += p_far * p_source
 

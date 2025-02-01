@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 def save_dict_to_hdf5(data_dict, filepath):
     """
@@ -30,7 +31,9 @@ def load_hdf5_to_dict(filepath):
             data_dict[key.strip("/")] = store[key]  # Remove leading '/'
     return data_dict
 
-# Example Usage
-loaded_data = load_hdf5_to_dict("processed_data.h5")
-print(loaded_data["events"].head())  # Access the "events" DataFrame
 
+def Poisson(k, lamb):
+    """Poisson probability density function with lamb mean 
+    and k observed events."""
+    k = int(k)
+    return lamb**k * np.exp(-lamb) / np.math.factorial(k)
