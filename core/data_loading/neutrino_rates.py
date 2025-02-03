@@ -4,8 +4,8 @@ import re
 import pandas as pd
 
 if __name__ == "__main__":
-    effectiveArea_path = Path("../data/neutrino_data/irfs")
-    events_path = Path("../data/neutrino_data/events")
+    effectiveArea_path = Path("../../data/neutrino_data/irfs")
+    events_path = Path("../../data/neutrino_data/events")
     dataframes_effectiveArea = {}
     dataframes_events = {}
 
@@ -43,4 +43,4 @@ if __name__ == "__main__":
     rate = len(times) / ((np.max(times) - np.min(times)) * 24 * 60 * 60)    # Neutrino detection rate per second
     print(rate)
 
-    np.save("neurino_rate.npy", np.array([rate]))
+    #np.save("neurino_rate.npy", np.array([rate]))
