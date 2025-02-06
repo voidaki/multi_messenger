@@ -43,10 +43,8 @@ def neutrino_energy(total_E):
     normalization_total_E = np.log(10**5)
     return total_E**-1 * normalization_total_E**-1
 
-def gravitational_total(gpstime, distance, ra, dec, M_1, M_2):
+def gravitational_conditional(gpstime, distance, ra, dec, M_1, M_2):
     """Retuns the source probability distribution for the gravitational wave source."""
     far = match_far(gpstime, distance, ra, dec, M_1, M_2)
     T_obs = 500
     return temporal(gpstime, T_obs)*distance(distance)*angular(ra, dec)*mass(M_1, M_2)*cut_off(far)
-
-

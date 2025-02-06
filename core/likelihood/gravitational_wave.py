@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from data_loading import load_gravitational_wave_data
 from utils.far import far_list
-import source
+import source.distribution
 
 gw_data = load_gravitational_wave_data()
 gpstime_source = gw_data["gpstime"]
@@ -63,6 +63,29 @@ def temporal_distribution(t_GW, t_s):  # Signal likelihood temporal distribution
         return 0
 
 
+def P_far(false_alarm_rate):
+    """Returns the probability of getting any given false alarm rate using
+    the O3 Sensitivity Measurements dataset for the binwidths. Only including
+    the false alarm rates below 2 per day since we only get measurements of them."""
+    far_gstlal_filtered = far_gstlal[far_gstlal <= 2]
+    far_mbta_filtered = far_mbta[far_mbta <= 2]
+    far_pycbc_hyperbank_filtered = far_pycbc_hyperbank[far_pycbc_hyperbank <= 2]
+    far_total = np.concatenate(
+        (far_gstlal_filtered, far_mbta_filtered, far_pycbc_hyperbank_filtered)
+    )  # All false alarm rates that are less than 2 per day
+    deviation_far = (false_alarm_rate - far_total) ** 2 <= (false_alarm_rate / 6.5) ** 2
+    prob = np.sum(deviation_far) / (len(far_total))
+    return prob
+
+
+def P_null_GW_t(t_GW, t_start, t_end):
+    if t_start <= t_GW <= t_end:
+        T_obs = t_end - t_start
+        return T_obs**-1
+    else:
+        return 0
+
+
 def P_F(false_alarm_rate, gpstime, distance, right_ascension, declination, mass1, mass2):
     fars = far_list(gpstime, distance, right_ascension, declination, mass1, mass2)
     if len(fars) == 0:
@@ -104,7 +127,7 @@ def P_signal_GW_F(false_alarm_rate):
         if p_far == 0:
             p_source = 0
         else:
-            p_source = source.distribution.gravitational_total(gpstime, r_s, ra, dec, M1, M2)
+            p_source = source.distribution.gravitational_conditional(gpstime, r_s, ra, dec, M1, M2)
 
         integral_sum += p_far * p_source
 
@@ -112,24 +135,3 @@ def P_signal_GW_F(false_alarm_rate):
     return integral_value
 
 
-def P_far(false_alarm_rate):
-    """Returns the probability of getting any given false alarm rate using
-    the O3 Sensitivity Measurements dataset for the binwidths. Only including
-    the false alarm rates below 2 per day since we only get measurements of them."""
-    far_gstlal_filtered = far_gstlal[far_gstlal <= 2]
-    far_mbta_filtered = far_mbta[far_mbta <= 2]
-    far_pycbc_hyperbank_filtered = far_pycbc_hyperbank[far_pycbc_hyperbank <= 2]
-    far_total = np.concatenate(
-        (far_gstlal_filtered, far_mbta_filtered, far_pycbc_hyperbank_filtered)
-    )  # All false alarm rates that are less than 2 per day
-    deviation_far = (false_alarm_rate - far_total) ** 2 <= (false_alarm_rate / 6.5) ** 2
-    prob = np.sum(deviation_far) / (len(far_total))
-    return prob
-
-
-def P_null_GW_t(t_GW, t_start, t_end):
-    if t_start <= t_GW <= t_end:
-        T_obs = t_end - t_start
-        return T_obs**-1
-    else:
-        return 0
