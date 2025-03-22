@@ -2,22 +2,14 @@ import numpy as np
 import pandas as pd
 
 from data_loading import load_neutrino_data
+from utils import (
+    Aeff,
+    search_parameters
+    )
 
 neutrino_data = load_neutrino_data()
 dataframes_effectiveArea = neutrino_data["effective_areas"]
 dataframes_events = neutrino_data["events"]
-
-
-def A_eff(energy_log10, declination):
-    df = dataframes_effectiveArea["IC86_II_effectiveArea"]
-    condition = (
-        (df["log10(E_nu/GeV)_min"] <= energy_log10)
-        & (energy_log10 < df["log10(E_nu/GeV)_max"])
-        & (df["Dec_nu_min[deg]"] <= declination)
-        & (declination < df["Dec_nu_max[deg]"])
-    )
-    effective_area = df[condition]
-    return effective_area.iloc[0]["A_Eff[cm^2]"]
 
 
 def temporal_distribution(t_nu, t_s):
@@ -44,41 +36,54 @@ def uniform_allsky(right_ascension, declination):
     return 0
 
 
-def signal_energy_localization(declination, epsilon_nu):
+def Paeffe(declination, epsilon, search_params=search_parameters("bns")):
     """Returns the probability of the given sky location and energy level
     using the effective area."""
-    df = dataframes_effectiveArea["IC86_II_effectiveArea"]
-    condition_epsilon = (df["log10(E_nu/GeV)_min"] <= epsilon_nu) & (
-        epsilon_nu <= df["log10(E_nu/GeV)_max"])
-    condition_declination = (df["Dec_nu_min[deg]"] <= declination) & (
-        declination <= df["Dec_nu_max[deg]"])
+    # Clipping neutrino energy inside the bounds
+    if epsilon < np.log10(search_params.epsilonmin):
+        epsilon = np.log10(search_params.epsilonmin)
+    if epsilon > np.log10(search_params.epsilonmax):
+        epsilon = np.log10(search_params.epsilonmax)
 
-    condition = condition_epsilon & condition_declination
-    filtered_df = df[condition]
-    filtered_df = filtered_df[filtered_df.columns[:]].to_numpy() 
-    effective_area = filtered_df[0][4]
-    return effective_area * (1/epsilon_nu**2) * (4*np.pi)**-1
+    aeff = Aeff(epsilon, declination, dataframes_effectiveArea)
+    return aeff*(1/epsilon)**2*(4*np.pi)**-1
 
 
-def null_temporal_distribution(T_obs):
-    return T_obs**-1
-
-
-def null_energy_localization(declination, epsilon_nu):
+def Pempe(declination, epsilon, search_params=search_parameters("bns")):
     """Returns the probability of the given sky location and energy level
-    in log10 scale from the data so can be used for the signal hypothesis."""
-    df = dataframes_events["IC86_VII_exp-1"]
-    binwidth_epsilon = 0.01     # In log10 scale
-    binwidth_declination = 1    # degrees
-    condition_epsilon = (df["log10(E/GeV)"] <= epsilon_nu + binwidth_epsilon) & (
-        epsilon_nu - binwidth_epsilon <= df["log10(E/GeV)"]
-    )
-    condition_dec = (df["Dec[deg]"] <= declination + binwidth_declination) & (
-        declination - binwidth_declination <= df["Dec[deg]"]
-    )
-    condition = condition_epsilon & condition_dec
-    filtered_df = df[condition]
-    return len(filtered_df) if len(filtered_df) != 0 else 0
+    in log10 scale from the data so can be used for the signal hypothesis.
+    
+    Parameters
+    ----------
+    declination: Observed declination angle of the neutrino detection.
+    epsilon_nu: Energy of the individual neutrino particle, in log10(E/GeV) scale."""
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    # Clipping neutrino energy inside the bounds
+    if epsilon < np.log10(search_params.epsilonmin):
+        epsilon = np.log10(search_params.epsilonmin)
+    if epsilon > np.log10(search_params.epsilonmax):
+        epsilon = np.log10(search_params.epsilonmax)
+
+    dataframes=dataframes_events
+    epsilonbins = np.linspace(np.log10(search_params.epsilonmin), np.log10(search_params.epsilonmax), 50)
+    decbins = np.linspace(-90.0, 90.0, 100)
+
+    emp_epsilon = np.array(pd.concat([dataframes[df]["log10(E/GeV)"] for df in dataframes], axis=0))
+    emp_dec = np.array(pd.concat([dataframes[df]["Dec[deg]"] for df in dataframes], axis=0))
+
+    hist, x_edges, y_edges = np.histogram2d(emp_epsilon, emp_dec, bins=[epsilonbins, decbins], density=True)
+
+    epsbin_i = np.digitize(epsilon, x_edges) - 1  # Get bin index for energy
+    decbin_i = np.digitize(declination, y_edges) - 1  # Get bin index for declination
+    
+    # Check if the values fall within the bin range
+    if 0 <= epsbin_i < len(x_edges) - 1 and 0 <= decbin_i < len(y_edges) - 1:
+        # Return the probability at the given bin
+        return hist[epsbin_i, decbin_i]
+    else:
+        # If the value is out of the bin range, return 0
+        return 0
 
 
 def P_signal_nu_source(declination_source):

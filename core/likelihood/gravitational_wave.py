@@ -6,7 +6,6 @@ from tqdm import tqdm
 
 from data_loading import load_gravitational_wave_data
 from utils.far import far_list
-import source.distribution
 
 gw_data = load_gravitational_wave_data()
 gpstime_source = gw_data["gpstime"]
@@ -63,7 +62,7 @@ def temporal_distribution(t_GW, t_s):  # Signal likelihood temporal distribution
         return 0
 
 
-def P_far(false_alarm_rate):
+def Pfar(false_alarm_rate):
     """Returns the probability of getting any given false alarm rate using
     the O3 Sensitivity Measurements dataset for the binwidths. Only including
     the false alarm rates below 2 per day since we only get measurements of them."""
@@ -84,54 +83,5 @@ def P_null_GW_t(t_GW, t_start, t_end):
         return T_obs**-1
     else:
         return 0
-
-
-def P_F(false_alarm_rate, gpstime, distance, right_ascension, declination, mass1, mass2):
-    fars = far_list(gpstime, distance, right_ascension, declination, mass1, mass2)
-    if len(fars) == 0:
-        return 0
-    else:
-        deviation_far = (false_alarm_rate - fars) ** 2 / (false_alarm_rate / 10) ** 2
-        count = 0
-        for deviation in deviation_far:
-            if deviation <= 5:
-                count += 1
-        return count / len(fars)
-
-
-def P_signal_GW_F(false_alarm_rate):
-    """Monte-Carlo integration over all parameters for gravitational waves
-    for finding the probability of any given false alarm rate."""
-    far_mask = np.logical_or(far_gstlal <= 2, far_mbta <= 2)
-    gpstime_filtered = gpstime_source[far_mask]
-    distance_filtered = distance_source[far_mask]
-    ra_filtered = ra_source[far_mask]
-    dec_filtered = dec_source[far_mask]
-    mass1_filtered = mass1_source[far_mask]
-    mass2_filtered = mass2_source[far_mask]
-
-    N = len(gpstime_filtered)
-    n_steps = N // 25
-    integral_sum = 0
-
-    # Add progress bar
-    for i in tqdm(range(n_steps), desc="Computing integral"):
-        gpstime = gpstime_filtered[i]
-        r_s = distance_filtered[i]
-        ra = ra_filtered[i]
-        dec = dec_filtered[i]
-        M1 = mass1_filtered[i]
-        M2 = mass2_filtered[i]
-
-        p_far = P_F(false_alarm_rate, gpstime, r_s, ra, dec, M1, M2)
-        if p_far == 0:
-            p_source = 0
-        else:
-            p_source = source.distribution.gravitational_conditional(gpstime, r_s, ra, dec, M1, M2)
-
-        integral_sum += p_far * p_source
-
-    integral_value = integral_sum / n_steps
-    return integral_value
 
 

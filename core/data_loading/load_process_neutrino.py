@@ -12,7 +12,7 @@ def load_neutrino_data():
     dataframes_effectiveArea = {}
     dataframes_events = {}
 
-# Separating the data files column names into their proper place
+    # Separating the data files column names into their proper place
     for file_path in effectiveArea_path.glob("*effectiveArea.csv"):
         with open(file_path, "r") as file:
             first_row = file.readline().strip()

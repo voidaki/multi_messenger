@@ -48,7 +48,7 @@ def match_far(gpstime, distance, right_ascension, declination, mass1, mass2):
     count = 0
     deviation_sorted = np.argsort(total_deviation)
     index = deviation_sorted[count]
-    while gw_data["far_gstlal"][index] >= 2 or gw_data["far_mbta"][index] >= 2:
+    while gw_data["far_gstlal"][index] >= 2 or gw_data["far_mbta"][index] >= 2 or gw_data["far_pycbc_hyperbank"] >= 2:
         count += 1
         if count == len(gw_data["gpstime"]):
             return np.inf
@@ -58,6 +58,7 @@ def match_far(gpstime, distance, right_ascension, declination, mass1, mass2):
         [
             (gw_data["far_gstlal"][index] <= 2) * gw_data["far_gstlal"][index],
             (gw_data["far_mbta"][index] <= 2) * gw_data["far_mbta"][index],
+            (gw_data["far_pycbc_hyperbank"][index] <= 2) * gw_data["far_pycbc_hyperbank"][index]
         ]
     )
 

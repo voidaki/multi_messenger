@@ -1,0 +1,14 @@
+python3 package dependencies {
+    numpy,
+    scipy,
+    matplotlib,
+    ligo-gracedb,
+    astropy,
+    hpmoc,
+    astropy_healpix,
+    h5py,
+    pandas,
+    pathlib,
+    re,
+    tqdm
+}
