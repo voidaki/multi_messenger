@@ -111,6 +111,8 @@ def ndotgwnu(search_params=search_parameters("bns")):
 from likelihood import Paeffe
 import matplotlib.pyplot as plt
 
+print(Paeffe(5., 3.))
+
 Paeffe_vec = np.vectorize(Paeffe)
 search_params = search_parameters("bns")
 epsilonbins = np.linspace(np.log10(search_params.epsilonmin), np.log10(search_params.epsilonmax), 50)
