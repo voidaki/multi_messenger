@@ -3,6 +3,8 @@ from data_loading import load_gravitational_wave_data, load_neutrino_data
 from tqdm import tqdm
 from scipy.integrate import nquad
 
+from likelihood import Paeffe
+
 from utils import (
     IceCubeLIGO,
     expnu,
@@ -71,10 +73,10 @@ def ndotnu(search_params=search_parameters("bns")):
     def P(r, Enu):
         return Pr(r, search_params)*PEnu(Enu, search_params)*temporal(search_params.tnuplus-search_params.tnuminus)*sky_dist()
     
-    def integrand(r, Enu):
+    def integrant(r, Enu):
         return P(r, Enu)*expnu(r, Enu, search_params)*ndotnu_true*search_params.fb**-1
 
-    result, error = nquad(integrand, [(np.min(distance_source), np.max(distance_source)), (search_params.Enumin, search_params.Enumax)])
+    result, error = nquad(integrant, [(np.min(distance_source), np.max(distance_source)), (search_params.Enumin, search_params.Enumax)])
     
     return result*4*np.pi, error
 
@@ -85,53 +87,47 @@ def ndotgwnu(search_params=search_parameters("bns")):
     Parameters
     ----------
     search_params: Constant parameters for the model."""
+    from scipy.integrate import quad, nquad
+    from scipy.interpolate import RegularGridInterpolator
+    
+    ndotgwnu_true = 1000.
+    
+    def Pgw(r):
+        """Histogram of the O3-sensitivity estimates injections.
+        
+        Parameters
+        ----------
+        r: float
+            Distance of the gravitational wave event, in Mpc
+        """
+        subthresholds = np.logical_or((far_gstlal <= 2), (far_mbta <= 2), (far_pycbc_hyperbank <= 2))
+        rsubthreshold = distance_source[subthresholds]
+        
+        counts, bin_edges = np.histogram(rsubthreshold, bins=100)
 
-    ndotgwnu_true = 1.0
-    def P(r, Enu, M1, M2):
-        return Pr(r, search_params)*PEnu(Enu, search_params)*temporal(search_params.tnuplus-search_params.tnuminus)*sky_dist()*PMgw(M1, M2, search_params)
-   
-    def integrand(r, Enu, M1, M2, gpstime, right_ascension, declination):
-        if match_far(gpstime, r, right_ascension*180./np.pi, declination*180./np.pi, M1, M2) >= 2.0:
+        if r < bin_edges[0] or r > bin_edges[-1]:
             return 0
-        else:
-            return P(r, Enu, M1, M2)*expnu(r, Enu, search_params)*1.0*search_params.fb**-1
     
+        bin_i = np.digitize(r, bin_edges) - 1
 
-    result, error = nquad(integrand, [(np.min(distance_source), np.max(distance_source)), 
-                                      (search_params.Enumin, search_params.Enumax), 
-                                      (search_params.Mgwmin, search_params.Mgwmax),
-                                      (search_params.Mgwmin, search_params.Mgwmax),
-                                      (np.min(gw_data["gpstime"]), np.max(gw_data["gpstime"])),
-                                      (0.0, 2*np.pi),
-                                      (-np.pi/2, np.pi/2)])
+        return counts[bin_i]/len(distance_source)
     
-    return result, error
+    def Pnu(r, Enu, theta):
+        return quad(lambda epsilon: Paeffe(epsilon, theta), np.log10(search_params.epsilonmin), np.log10(search_params.epsilonmax), limit=200)[0]*Enu*r**-2
+    print(Pnu(400.90, 0.5*10**49, 51.25))
+    def integrant(r, Enu, theta):
+        return r**2*np.sin(theta)*Pgw(r)*Pnu(r, Enu, theta)
+    
+    result, error = nquad(integrant, [
+        (2.0, 730.0),
+        (search_params.Enumin, search_params.Enumax),
+        (0.0, np.pi)
+    ], opts=[{'limit': 200}, {'limit': 200}, {'limit': 200}])
 
 
-from likelihood import Paeffe
-import matplotlib.pyplot as plt
+    return result*ndotgwnu_true*2*np.pi*4*np.pi, error
 
-print(Paeffe(5., 3.))
 
-Paeffe_vec = np.vectorize(Paeffe)
-search_params = search_parameters("bns")
-epsilonbins = np.linspace(np.log10(search_params.epsilonmin), np.log10(search_params.epsilonmax), 50)
-decbins = np.linspace(-90.0, 90.0, 100)
+result, error = ndotgwnu()
 
-X, Y = np.meshgrid(epsilonbins, decbins)
-
-Z = Paeffe_vec(X, Y, search_params)
-
-plt.figure(figsize=(8, 6))
-plt.pcolormesh(X, Y, Z, cmap="plasma", shading="auto")
-
-# Add a colorbar
-plt.colorbar(label="Function Value")
-
-# Labels and title
-plt.xlabel("Energy")
-plt.ylabel("Declination Angle")
-plt.title("2D Gaussian Function")
-
-# Show the plot
-plt.show()
+print(f"ndotgwnu = {result}, the error = {error}")

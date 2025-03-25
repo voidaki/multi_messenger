@@ -103,19 +103,33 @@ def gravitational_conditional(gpstime, distance, ra, dec, M_1, M_2):
     return temporal(T_obs)*distance(distance)*sky_dist(ra, dec)*PMgw(M_1, M_2)*cut_off(far)
 
 
-def Pfar(false_alarm_rate):
+def Pfar(far):
     """Returns the probability of getting any given false alarm rate using
     the O3 Sensitivity Measurements dataset for the binwidths. Only including
-    the false alarm rates below 2 per day since we only get measurements of them."""
+    the false alarm rates below 2 per day since we only get measurements of them.
+    
+    Parameters
+    ----------
+    far: False alarm rate (Hz)"""
     far_gstlal_filtered = far_gstlal[far_gstlal <= 2]
     far_mbta_filtered = far_mbta[far_mbta <= 2]
     far_pycbc_hyperbank_filtered = far_pycbc_hyperbank[far_pycbc_hyperbank <= 2]
     far_total = np.concatenate(
         (far_gstlal_filtered, far_mbta_filtered, far_pycbc_hyperbank_filtered)
-    )  # All false alarm rates that are less than 2 per day
-    deviation_far = (false_alarm_rate - far_total) ** 2 <= (false_alarm_rate / 6.5) ** 2
-    prob = np.sum(deviation_far) / (len(far_total))
-    return prob
+    )*86400  # All false alarm rates that are less than 2 per day
+    bins = np.logspace(-52, np.log10(2.3e-5), num=(52-5)+1)
+
+    counts, bin_edges = np.histogram(far_total, bins=bins, density=True)
+
+    bin_widths = np.diff(bin_edges)
+    probabilities = counts * bin_widths
+
+    if far < bin_edges[0] or far > bin_edges[-1]: # False alarm rate is out of range
+        return 0
+    
+    bin_i = np.digitize(far, bin_edges) - 1
+
+    return probabilities[bin_i] if 0 <= bin_i < len(probabilities) else 0 
 
 
 def Aeff(epsilon_nu, declination, dataframes_effectiveArea):
@@ -138,19 +152,19 @@ def expnu(r, Enu,  search_params):
     return search_params.nu_51_100*(Enu/search_params.Enumax)*(100/r)**2
 
 
-def Pbgfar(far):
+def Pempfar(far):
     """Probability of a false alarm rate in null hypothesis, obtained from the
-    histogram of all superevents released in GraceDB from O1 to end of O4.
+    histogram of all superevents released in GraceDB from O1 to end of O4. Empirical
+    probability of a false alarm rate.
     
     Parameters
     ----------
-    far: False alarm rate"""
+    far: False alarm rate (Hz)"""
     far_data = GW_BG_FARS
     log_bins_1 = np.logspace(-52, -10, num=(52-10)+1)
 
     log_bins_2 = np.logspace(-10, np.log10(2.3e-5), num=4 * (int(np.log10(2.3e-5)) + 10))
 
-    # Combine both sets of bins
     bins = np.concatenate([log_bins_1, log_bins_2])
 
     counts, bin_edges = np.histogram(far_data, bins=bins, density=True)
@@ -177,7 +191,7 @@ class IceCubeLIGO(BaseModel):
     ratebggw: float = Field(..., description="Background rates for the gravitational wave channels. Including every pipeline, in Hz.")
     ratebgnu: float = Field(..., description="Background neutrino detection rate in IceCube channels, obtained from IceCube data releases, in Hz.")
     ndotgw: float = Field(..., description="Observable gravitational wave rate, calculated in the integral in eq. (26)")
-    ndotnu: float = Field(..., description="Observable neutrino rate, calculated in the integral in eq. (29)")
+    ndotnu: float = Field(..., description="Observable astrophysical neutrino rate, calculated in the integral in eq. (29)")
     ndotgwnu: float = Field(..., description="Observable GW and neutrino multi-messenger rate.")
     Mgwmax: float = Field(..., description="""Maximum mass of one of the objects in a GW emitting event accounted by the model. Different
                           for the types of merger events released by LIGO's GraceDB. [kg]""")
@@ -205,15 +219,15 @@ def search_parameters(population):
         fb = 10.0, 
         ratebggw = 3.0*2.3*10**-5, # 1/s, 2 per day per pipeline (gstlal, mbta)
         ratebgnu = 0.0035055081034729364, # Background neurino rate, per second (1/s)
-        ndotgw = 1.0399231743810202,
-        ndotnu = 1, #FIXME
+        ndotgw = 3.9255868248144146, # per year
+        ndotnu = 2.7402641832764836e-05, # per year
         ndotgwnu = 1, #FIXME
         Mgwmax = 2.5*1.988*10**30, # 2.5 Solar Masses in Kgs for bns
         Mgwmin = 1.0*1.988*10**30, # 1.0 Solar Masses in Kgs for bns
         Enumax = 10**51, # erg
-        Enumin = 10*46, # erg
+        Enumin = 10**46, # erg
         epsilonmax = 10**8, # GeV
-        epsilonmin = 10.0, # GeV
+        epsilonmin = 10.0**2, # GeV
         farthr = 2.3*10**-5, # Hz
         population=population
     )
@@ -266,3 +280,39 @@ def match_far(gpstime, distance, right_ascension, declination, mass1, mass2):
             (gw_data["far_mbta"][index] <= 2) * gw_data["far_mbta"][index]
         ]
     )
+
+class IceCubeNeutrino(BaseModel):
+    """Class for IceCube's neutrino detections."""
+    mjd: float = Field(..., description="Detection time of the neutrino in MJD units.")
+    ra: float = Field(..., description="Right ascension angle of the neutrino. [Deg]")
+    dec: float = Field(..., description="Declination angle of the neutrino. [Deg]")
+    epsilon: float = Field(..., description="Reconstructed energy ofthe neutrino. [GeV]")
+    sigma: float = Field(..., description="Uncertainty radius of neutrino detection. [Deg]")
+
+    def gps(self):
+        """Converts mjd time format into gps time used in GW detections."""
+        import astropy.time
+        return astropy.time.Time(self.mjd, format='mjd').gps
+    
+    def psf(self):
+        """Returns PartialUniqSkymap of the neutrino detection as
+        a Gaussian point spread function centered around the right
+        ascension and declination with sigma uncertainty.
+        
+        Parameters
+        ----------
+        right_ascension: Right ascension angle of neutrino in floating
+        number and degrees for unit.
+        declination: Declination angle of neutrino in floating number and
+        degrees for unit.
+        sigma: Standard deviation provided by IceCube neutrino detection.
+        """
+
+        from hpmoc.psf import psf_gaussian
+        return psf_gaussian(ra=self.ra, dec=self.dec, sigma=self.sigma)
+    
+    def full_skymap(self, skymap):
+        """Full skymap as an array with same nside as the skymap parameter."""
+        partialskymap = self.psf()
+        return partialskymap.fill(nside=skymap.nside)
+    
