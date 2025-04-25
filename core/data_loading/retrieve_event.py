@@ -1,7 +1,6 @@
 from ligo.gracedb.rest import GraceDb
 from astropy.table import QTable
 from astropy.utils.data import download_file
-import shutil
 
 client = GraceDb()
 
@@ -22,7 +21,9 @@ def retrieve_event(event_name):
     filename = download_file(skymap_url, cache=True)
 
     save_name = f"{event_name}.multiorder.fits"
-    shutil.move(filename, save_name)
-
+    
     skymap = QTable.read(filename)
+    
+    # skymap.write(save_name)
     return skymap, t_GW, far
+

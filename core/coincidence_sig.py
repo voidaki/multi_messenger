@@ -1,4 +1,5 @@
 from utils import (
+    temporal,
     Pr,
     sky_dist,
     PMgw,
@@ -9,9 +10,28 @@ from utils import (
     Pempfar,
     matchfar,
     IceCubeLIGO,
-    search_parameters
+    search_parameters,
+    t_overlap
+)
+from skymap import (
+    GWSkyMap,
+    neutrinoskymap,
+    emptyskymap,
+    Aeffskymap
+)
+from likelihood import (
+    Paeffe,
+    Pempe
 )
 
+def Pthetagw(r, M1, M2):
+    return temporal(search_parameters("bns"))*Pr(r, search_parameters("bns"))*sky_dist()*PMgw(M1, M2, search_params=search_parameters("bns"))
+
+def Pthetanu(r, Enu):
+    return temporal(search_parameters("bns"))*Pr(r, search_parameters("bns"))*sky_dist()*PEnu(Enu, search_params=search_parameters("bns"))
+
+def Ptheta(r, Enu, M1, M2):
+    return temporal(search_parameters("bns"))*Pr(r, search_parameters("bns"))*sky_dist()*PEnu(Enu, search_params=search_parameters("bns"))*PMgw(M1, M2, search_params=search_parameters("bns"))
 
 def Ph00(search_params=search_parameters("bns")):
     """Prior probability of null hypothesis of both detections
@@ -52,18 +72,23 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
     Returns
     -------
     Signal hypothesis likelihood for candidate multi-messenger (GW&HEN) detections
-        P(x|θ,H_s)P(θ|H_s)
+        P(x|θ,H_s)P(θ|H_s) Integrated over allsky and time, parameters
     """
 
-    from scipy.integrate import nquad
+    from scipy.integrate import quad
     from scipy.stats import poisson
     import numpy as np
 
     if len(neutrino_list) == 0:
         return 0.
     
-    def integrant():
-        return 0
+    summednuskymap = emptyskymap(0, gw_skymap)
+    count = -1
+    for neutrino in neutrino_list:
+        count += 1
+        a = emptyskymap(t_overlap(tgw, neutrino.gps, search_params)*Paeffe(neutrino.epsilon, neutrino.dec)*sky_dist(), gw_skymap)
+        summednuskymap += a*neutrinoskymap(neutrino.ra, neutrino.dec, neutrino.sigma, gw_skymap, normalize=False)
+    
     
 def SLwogw():
     """Returns the signal likelihood without gravitational wave, ie. noise GW."""
@@ -73,12 +98,12 @@ def SLwonu():
     """Returns the signal likelihood without neutrino, ie. noise neutrino."""
     return 1
 
-def null_likelihood():
+def null_likelihood(far, epsilon, dec, search_params=search_parameters("bns")):
     """Returns the null likelihood, ie. both detections are noise."""
-    return 1
+    return temporal(search_params)**2*Pempfar(far)*Pempe(epsilon, dec)
     
 
 def TS(search_params=search_parameters("bns")):
     nominator = signal_likelihood()*Phgwnu()
-    denominator = Ph0nu() + Phgw0() + Ph00()
+    denominator = SLwogw()*Ph0nu() + SLwonu()*Phgw0() + null_likelihood()*Ph00()
     return nominator/denominator

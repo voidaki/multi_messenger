@@ -63,7 +63,8 @@ az_source = gw_data["azimuth"]
 nu_data = load_neutrino_data()
 
 
-def temporal(T_obs):
+def temporal(search_params):
+    T_obs = search_params.tgwplus - search_params.tgwminus
     return T_obs**-1
 
 
@@ -132,19 +133,19 @@ def Pfar(far):
     return probabilities[bin_i] if 0 <= bin_i < len(probabilities) else 0 
 
 
-def Aeff(epsilon_nu, declination, dataframes_effectiveArea):
+def Aeff(epsilon, declination, dataframes_effectiveArea):
     """Returns the corresponding effective area of the neurino detection with 
     respect to the individual energy of detected neturino in log10 scale and 
      declination angle. """
-    df = dataframes_effectiveArea["IC86_II_effectiveArea"]
-    condition = (
-        (df["log10(E_nu/GeV)_min"] <= epsilon_nu)
-        & (epsilon_nu < df["log10(E_nu/GeV)_max"])
-        & (df["Dec_nu_min[deg]"] <= declination)
-        & (declination < df["Dec_nu_max[deg]"])
-    )
-    effective_area = df[condition]
-    return effective_area.iloc[0]["A_Eff[cm^2]"]
+    df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
+    condition_epsilon = (df['log10(E_nu/GeV)_min'] <= epsilon) & (epsilon <= df['log10(E_nu/GeV)_max'])
+    condition_declination = (df['Dec_nu_min[deg]'] <= declination) & (declination <= df['Dec_nu_max[deg]'])
+    condition = condition_epsilon & condition_declination
+    filtered_df = df[condition]
+    filtered_df = filtered_df[filtered_df.columns[:]].to_numpy()
+    
+    A_eff = filtered_df[0][4]
+    return A_eff
 
 
 def expnu(r, Enu,  search_params):
@@ -178,6 +179,14 @@ def Pempfar(far):
     bin_i = np.digitize(far, bin_edges) - 1
 
     return probabilities[bin_i] if 0 <= bin_i < len(probabilities) else 0
+
+
+def t_overlap(tgw, tnu, search_params):
+    return max(
+        0,
+        (min(tgw+search_params.tgwplus, tnu+search_params.tnuplus) -
+         max(tgw+search_params.tgwminus, tnu+search_params.tnuminus))
+    )
 
 
 class IceCubeLIGO(BaseModel):
