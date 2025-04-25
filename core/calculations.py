@@ -131,8 +131,8 @@ def ndotgwnu(search_params=search_parameters("bns")):
 from data_loading import retrieve_event
 from skymap import *
 
-# skymap, tgw, far = retrieve_event("S250326y")
-# print(skymap)        
+skymap, tgw, far = retrieve_event("S250326y")
+print(skymap)        
 # gw_skymap = GWSkyMap(skymap)
 # print(gw_skymap.nside, gw_skymap.ra, gw_skymap.prob, gw_skymap.ipix)
 # nu = neutrinoskymap(31.5, -41.43, 0.5, gw_skymap)
@@ -141,11 +141,11 @@ from skymap import *
 # print(top100)
 # print(f"Total sum: {np.sum(nu)}")
 
-from hpmoc.psf import psf_gaussian
-import matplotlib.pyplot as plt
+# from hpmoc.psf import psf_gaussian
+# import matplotlib.pyplot as plt
 
-nu = psf_gaussian(31.5, -41.43, 0.5, nside=256).fill(nside=64, as_skymap=True)
-print(type(nu))
-nu.plot()
-plt.show()
-print("hpmoc skymap: ", nu)
+# nu = psf_gaussian(31.5, -41.43, 0.5, nside=256).fill(nside=64, as_skymap=True)
+# print(type(nu))
+# nu.plot()
+# plt.show()
+# print("hpmoc skymap: ", nu)

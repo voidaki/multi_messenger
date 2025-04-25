@@ -1,3 +1,5 @@
+
+
 def neutrinopsf(ra, dec, sigma):
     """Returns PartialUniqSkymap of the neutrino detection as
     a Gaussian point spread function centered around the right
@@ -28,14 +30,13 @@ def emptyskymap(p, skymap):
     """
 
 
-class GWSkyMap():
+class HealPixSkyMap():
     def __init__(self, skymap, nest=True):
         """Take the skymap QTable and initialize it as a class.
         nest: boolean
             True for laterilization from UNIQ to NESTED"""
         import numpy as np
         import astropy_healpix as ah
-        import healpy as hp
 
         self.uniq = np.array(skymap["UNIQ"])
         self.prob = skymap["PROBDENSITY"]
@@ -49,12 +50,17 @@ class GWSkyMap():
             nside = ah.level_to_nside(level) # Lateralization from UNIQ to NESTED
             self.nside = nside
             self.ipix = ipix
-        
+    
+    def nside2ang(self):
+        import healpy as hp
+        import numpy as np
         ra, dec = hp.pix2ang(self.nside, self.ipix,
                           nest=self.nest, lonlat=True)
-        self.ra = np.array(ra)
-        self.dec = np.array(dec)
 
+        return np.array(ra), np.array(dec)
+    
+    def psf_neutrino():
+        
 
     def nside2pixarea(self):
         import healpy as hp
@@ -90,14 +96,13 @@ def neutrinoskymap(ra, dec, sigma, skymap, normalize=True):
 
     ipix_nested = skymap.ipix
     nsides = skymap.nside
-    # Get pixel vectors
-    vecs = hp.pix2vec(nsides, ipix_nested, nest=True)
-    vecs = np.stack(vecs, axis=-1)  # (N, 3)
 
-    # Get neutrino direction vector
+    vecs = hp.pix2vec(nsides, ipix_nested, nest=True)
+    vecs = np.stack(vecs, axis=-1)
+
     theta = np.deg2rad(90 - dec)
     phi = np.deg2rad(ra)
-    source_vec = hp.ang2vec(theta, phi)  # shape (3,)
+    source_vec = hp.ang2vec(theta, phi)
 
     dots = np.clip(vecs @ source_vec, -1, 1)
     ang_sep_rad = np.arccos(dots)
@@ -114,7 +119,6 @@ def neutrinoskymap(ra, dec, sigma, skymap, normalize=True):
     return psf
 
 
-
 def emptyskymap(val, skymap):
     import healpy as hp
     import numpy as np
@@ -127,7 +131,7 @@ def emptyskymap(val, skymap):
     return emptymap
 
 
-def Aeffskymap(epsilon, skymap):
+def Aeff_skymap(epsilon, skymap):
     import healpy as hp
     import numpy as np
 

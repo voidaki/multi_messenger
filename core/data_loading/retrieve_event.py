@@ -11,7 +11,9 @@ def retrieve_event(event_name):
     t_GW = gw_dict.get("t_0")
     far = gw_dict.get("far")
     files = client.files(event_name).json()
-    if "bayestar.multiorder.fits" in files:
+    if "bayestar.fits.gz" in files:
+        skymap_url = files["bayestar.fits.gz"]
+    elif "bayestar.multiorder.fits" in files:
         skymap_url = files["bayestar.multiorder.fits"]
     elif "Bilby.multiorder.fits" in files:
         skymap_url = files["Bilby.multiorder.fits"]
