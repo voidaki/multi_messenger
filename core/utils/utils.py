@@ -69,7 +69,7 @@ def temporal(search_params):
 
 
 def Pr(r, search_parameters):
-    r_max = max(distance_source)
+    r_max = 700.0 # Mpc for BNS
     N_r = r_max**3 / 3  # normalizing the distance distribution
     return r**2 / N_r
 
@@ -221,10 +221,10 @@ def search_parameters(population):
     """
     return IceCubeLIGO(
         nu_51_100 = 1.1,
-        tgwplus = 250, # s
-        tgwminus = -250, # s
-        tnuplus = 250, # s
-        tnuminus = -250, # s
+        tgwplus = 250., # s
+        tgwminus = -250., # s
+        tnuplus = 250., # s
+        tnuminus = -250., # s
         fb = 10.0, 
         ratebggw = 3.0*2.3*10**-5, # 1/s, 2 per day per pipeline (gstlal, mbta)
         ratebgnu = 0.0035055081034729364, # Background neurino rate, per second (1/s)

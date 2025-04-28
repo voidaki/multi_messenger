@@ -61,7 +61,7 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
     ----------
     tgw: float 
         Detection gps time of the gravitational wave, in s
-    gw_skymap: multiorder.fits
+    gw_skymap: HealPixSkymap instance
         Skymap provided by GraceDB superevent release
     far: float 
         False alarm rate provided by GraceDB superevent release, in Hz
@@ -75,7 +75,7 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
         P(x|θ,H_s)P(θ|H_s) Integrated over allsky and time, parameters
     """
 
-    from scipy.integrate import quad
+    from scipy.integrate import nquad
     from scipy.stats import poisson
     import numpy as np
 
@@ -89,6 +89,8 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
         a = emptyskymap(t_overlap(tgw, neutrino.gps, search_params)*Paeffe(neutrino.epsilon, neutrino.dec)*sky_dist(), gw_skymap)
         summednuskymap += a*neutrinoskymap(neutrino.ra, neutrino.dec, neutrino.sigma, gw_skymap, normalize=False)
     
+    def integrand(Enu, r):
+        return 1
     
 def SLwogw():
     """Returns the signal likelihood without gravitational wave, ie. noise GW."""

@@ -90,15 +90,13 @@ def Pempe(epsilon, declination, search_params=search_parameters("bns")):
 
     hist, x_edges, y_edges = np.histogram2d(emp_epsilon, emp_dec, bins=[epsilonbins, decbins], density=True)
 
-    epsbin_i = np.digitize(epsilon, x_edges) - 1  # Get bin index for energy
-    decbin_i = np.digitize(declination, y_edges) - 1  # Get bin index for declination
+    epsbin_i = np.digitize(epsilon, x_edges) - 1  
+    decbin_i = np.digitize(declination, y_edges) - 1  
     
     # Check if the values fall within the bin range
     if 0 <= epsbin_i < len(x_edges) - 1 and 0 <= decbin_i < len(y_edges) - 1:
-        # Return the probability at the given bin
         return hist[epsbin_i, decbin_i]
     else:
-        # If the value is out of the bin range, return 0
         return 0
 
 

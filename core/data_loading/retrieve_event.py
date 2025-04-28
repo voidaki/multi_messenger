@@ -5,15 +5,14 @@ from astropy.utils.data import download_file
 client = GraceDb()
 
 def retrieve_event(event_name):
-    """Retreaving the skymap from GraceDB and reading in Qtable format"""
+    """Retreaving the skymap, event time, and false alarm rate
+    from GraceDB and reading in Qtable format"""
     gw = client.superevent(event_name)
     gw_dict = gw.json()
     t_GW = gw_dict.get("t_0")
     far = gw_dict.get("far")
     files = client.files(event_name).json()
-    if "bayestar.fits.gz" in files:
-        skymap_url = files["bayestar.fits.gz"]
-    elif "bayestar.multiorder.fits" in files:
+    if "bayestar.multiorder.fits" in files:
         skymap_url = files["bayestar.multiorder.fits"]
     elif "Bilby.multiorder.fits" in files:
         skymap_url = files["Bilby.multiorder.fits"]
@@ -22,10 +21,10 @@ def retrieve_event(event_name):
         skymap_url = files[multiorder_maps[0]]
     filename = download_file(skymap_url, cache=True)
 
-    save_name = f"{event_name}.multiorder.fits"
+    save_name = "LVCSkymap.multiorder.fits"
     
     skymap = QTable.read(filename)
     
-    # skymap.write(save_name)
+    skymap.write(save_name, overwrite=True)
     return skymap, t_GW, far
 
