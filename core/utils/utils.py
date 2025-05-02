@@ -133,19 +133,78 @@ def Pfar(far):
     return probabilities[bin_i] if 0 <= bin_i < len(probabilities) else 0 
 
 
-def Aeff(epsilon, declination, dataframes_effectiveArea):
+# def Aeff(epsilon, declination, dataframes_effectiveArea):
+#     """Returns the corresponding effective area of the neurino detection with 
+#     respect to the individual energy of detected neturino in log10 scale and 
+#      declination angle. """
+#     df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
+#     condition_epsilon = (df['log10(E_nu/GeV)_min'] <= epsilon) & (epsilon <= df['log10(E_nu/GeV)_max'])
+#     condition_declination = (df['Dec_nu_min[deg]'] <= declination) & (declination <= df['Dec_nu_max[deg]'])
+#     condition = condition_epsilon & condition_declination
+#     filtered_df = df[condition]
+#     filtered_df = filtered_df[filtered_df.columns[:]].to_numpy()
+    
+#     A_eff = filtered_df[0][4]
+#     return A_eff
+
+def angle_dict():
+    return [90.00, 73.74, 66.93, 61.64, 57.14, 
+            53.13, 49.46, 46.05, 42.84, 39.79, 
+            36.87, 34.06, 31.33, 28.69, 26.10,
+            23.58, 21.10, 18.66, 16.26, 13.89,
+            11.54, 9.21, 6.89, 4.59, 2.29, 0.0]
+
+def epsilon_dict():
+    return [2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2,
+            3.4, 3.6, 3.8, 4.0, 4.2, 4.4, 4.6,
+            4.8, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0,
+            6.2, 6.4, 6.6, 6.8, 7.0, 7.2, 7.4,
+            7.6, 7.8, 8.0, 8.2, 8.4, 8.6, 8.8,
+            9.0, 9.2, 9.4, 9.6, 9.8, 10.0]
+
+def Aeff(epsilon, declination, search_params):
     """Returns the corresponding effective area of the neurino detection with 
     respect to the individual energy of detected neturino in log10 scale and 
-     declination angle. """
-    df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
-    condition_epsilon = (df['log10(E_nu/GeV)_min'] <= epsilon) & (epsilon <= df['log10(E_nu/GeV)_max'])
-    condition_declination = (df['Dec_nu_min[deg]'] <= declination) & (declination <= df['Dec_nu_max[deg]'])
-    condition = condition_epsilon & condition_declination
-    filtered_df = df[condition]
-    filtered_df = filtered_df[filtered_df.columns[:]].to_numpy()
+    declination angle.
+     
+    Parameters
+    ----------
+    epsilon: float
+        Reconstructed energy of the neutrino
+    declination: float
+        Declination angle of the neutrino observation
+    """
+    if epsilon >= 100.0:
+        epsilon = np.log10(epsilon)
+    # Clipping neutrino energy inside the bounds
+    if epsilon < np.log10(search_params.epsilonmin):
+        epsilon = np.log10(search_params.epsilonmin)
+    if epsilon > np.log10(search_params.epsilonmax):
+        epsilon = np.log10(search_params.epsilonmax)
     
-    A_eff = filtered_df[0][4]
-    return A_eff
+    if declination < -90.0:
+        declination = -90.0
+    if declination > 90.0:
+        declination = 90.0
+
+    df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
+
+    dec = abs(declination)
+    dec_angles = np.array(angle_dict())
+    dec_index = sum(dec < dec_angles) 
+
+    epsilon_index = int((epsilon - 2.0)/0.2)
+
+    if declination < 0:
+        row = df[(df['log10(E_nu/GeV)_min'] == epsilon_dict()[epsilon_index]) & (df['Dec_nu_min[deg]'] == -dec_angles[dec_index])]
+    else:
+        row = df[(df['log10(E_nu/GeV)_min'] == epsilon_dict()[epsilon_index]) & (df['Dec_nu_min[deg]'] == dec_angles[dec_index])]
+
+    if not row.empty:
+        Aeff = row.iloc[0]['A_Eff[cm^2]']
+    else:
+        Aeff = 0
+    return Aeff
 
 
 def expnu(r, Enu,  search_params):
@@ -295,7 +354,7 @@ class IceCubeNeutrino(BaseModel):
     mjd: float = Field(..., description="Detection time of the neutrino in MJD units.")
     ra: float = Field(..., description="Right ascension angle of the neutrino. [Deg]")
     dec: float = Field(..., description="Declination angle of the neutrino. [Deg]")
-    epsilon: float = Field(..., description="Reconstructed energy ofthe neutrino. [GeV]")
+    epsilon: float = Field(..., description="Reconstructed energy of the neutrino. [GeV]")
     sigma: float = Field(..., description="Uncertainty radius of neutrino detection. [Deg]")
 
     def gps(self):

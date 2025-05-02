@@ -81,20 +81,62 @@ def ndotnu(search_params=search_parameters("bns")):
     return result*4*np.pi, error
 
 
+# def ndotgwnu(search_params=search_parameters("bns")):
+#     """Returns the joint observable GW and neutrino rate.
+    
+#     Parameters
+#     ----------
+#     search_params: Constant parameters for the model."""
+#     from scipy.integrate import quad, nquad
+#     from scipy.interpolate import RegularGridInterpolator
+    
+#     ndotgwnu_true = 1000.
+    
+#     def Pgw(r):
+#         """Histogram of the O3-sensitivity estimates injections.
+        
+#         Parameters
+#         ----------
+#         r: float
+#             Distance of the gravitational wave event, in Mpc
+#         """
+#         subthresholds = np.logical_or((far_gstlal <= 2), (far_mbta <= 2), (far_pycbc_hyperbank <= 2))
+#         rsubthreshold = distance_source[subthresholds]
+        
+#         counts, bin_edges = np.histogram(rsubthreshold, bins=100)
+
+#         if r < bin_edges[0] or r > bin_edges[-1]:
+#             return 0
+    
+#         bin_i = np.digitize(r, bin_edges) - 1
+
+#         return counts[bin_i]/len(distance_source)
+    
+#     def Pnu(r, Enu, theta):
+#         return quad(lambda epsilon: Paeffe(epsilon, theta), np.log10(search_params.epsilonmin), np.log10(search_params.epsilonmax), limit=200)[0]*Enu*r**-2
+#     print(Pnu(400.90, 0.5*10**49, 51.25))
+#     def integrant(r, Enu, theta):
+#         return r**2*np.sin(theta)*Pgw(r)*Pnu(r, Enu, theta)
+    
+#     result, error = nquad(integrant, [
+#         (2.0, 730.0),
+#         (search_params.Enumin, search_params.Enumax),
+#         (0.0, np.pi)
+#     ], opts=[{'limit': 200}, {'limit': 200}, {'limit': 200}])
+
+
+#     return result*ndotgwnu_true*2*np.pi*4*np.pi, error
+
 def ndotgwnu(search_params=search_parameters("bns")):
     """Returns the joint observable GW and neutrino rate.
     
     Parameters
     ----------
     search_params: Constant parameters for the model."""
-    from scipy.integrate import quad, nquad
-    from scipy.interpolate import RegularGridInterpolator
-    
-    ndotgwnu_true = 1000.
-    
+    from scipy.integrate import quad
     def Pgw(r):
         """Histogram of the O3-sensitivity estimates injections.
-        
+            
         Parameters
         ----------
         r: float
@@ -113,20 +155,23 @@ def ndotgwnu(search_params=search_parameters("bns")):
         return counts[bin_i]/len(distance_source)
     
     def Pnu(r, Enu, theta):
-        return quad(lambda epsilon: Paeffe(epsilon, theta), np.log10(search_params.epsilonmin), np.log10(search_params.epsilonmax), limit=200)[0]*Enu*r**-2
-    print(Pnu(400.90, 0.5*10**49, 51.25))
-    def integrant(r, Enu, theta):
-        return r**2*np.sin(theta)*Pgw(r)*Pnu(r, Enu, theta)
-    
-    result, error = nquad(integrant, [
-        (2.0, 730.0),
-        (search_params.Enumin, search_params.Enumax),
-        (0.0, np.pi)
-    ], opts=[{'limit': 200}, {'limit': 200}, {'limit': 200}])
+        pass
 
+from utils import Aeff
+import pandas as pd
 
-    return result*ndotgwnu_true*2*np.pi*4*np.pi, error
+# df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
 
+# dec_vals = np.linspace(-90.0, 90.0, 100)
+# for dec in dec_vals:
+#     print(dec, ": ", Aeff(5.54, dec, search_params=search_parameters("bns")))
+
+# from likelihood.neutrino import Paeffe
+# from scipy.integrate import nquad
+
+# search_params = search_parameters("bns")
+# result, _ = nquad(Paeffe, [(search_params.epsilonmin, search_params.epsilonmax), (-90.0, 90.0)])
+# print(result)
 
 from data_loading import retrieve_event
 from skymap import *
@@ -136,9 +181,9 @@ import hpmoc
 skymap, tgw, far = retrieve_event('S250326y')
 
 gw_skymap = HealPixSkymap.readQtable(skymap)
-print(gw_skymap.nside2area_per_pix())
+print(gw_skymap.to_table())
 full_skymap = gw_skymap.rasterize(as_skymap=True)
-print(full_skymap)
+print(full_skymap.to_table())
 print(full_skymap.nside, full_skymap.nside2ang(), full_skymap.pixels)
 nu = full_skymap.neutrinoskymap(31.5, -41.43, 0.5)
-print("\nThe neutrino skymap:", nu)
+print("\n", nu)

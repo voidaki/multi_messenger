@@ -1,14 +1,3 @@
-def emptyskymap(p, skymap):
-    """Returns a skymap with with uniform value p, shaped in the nest
-    of entered skymap.
-    
-    Parameters
-    ----------
-    p: int or float
-        The value each pixel of the skymap is set at.
-    skymap: Skymap
-        Used to create the nesting of the new skymap.
-    """
 
 class HealPixSkymap():
     def __init__(self, pixels, distmu, distsigma, distnorm, uniq=None, moc=True, nest=True):
@@ -58,6 +47,9 @@ class HealPixSkymap():
 
         return HealPixSkymap(pixels, distmu, distsigma, distnorm, uniq)
 
+    def load_from_graceid(graceid):
+        pass
+
     def nside2npix(self):
         return 12 * self.nside**2
 
@@ -69,8 +61,8 @@ class HealPixSkymap():
 
         return np.array(ra), np.array(dec)
     
-    def uniq2nested(self):
-        return 0
+    def uniq2nested(self): # FIXME
+        pass
 
     def rasterize(self, nest=True, as_skymap=False):
         """
@@ -82,14 +74,18 @@ class HealPixSkymap():
         Returns
         -------
         nested_skymap: array-like, if as_skymap is set False
-        HealPixSkymap instance if as_skymap is set True
+            HealPixSkymap instance if as_skymap is set True
         """
         from hpmoc.utils import fill
-        import numpy as np
+        import astropy.units as u
         max_nside = max(self.nside)
         nested_skymap = fill(self.uniq, self.pixels, max_nside)
+        if self.moc:
+            self.distmu = fill(self.uniq, self.distmu, max_nside)
+            self.distsigma = fill(self.uniq, self.distsigma, max_nside)
+            self.distnorm = fill(self.uniq, self.distnorm, max_nside)
         if not as_skymap:
-            return nested_skymap
+            return nested_skymap # as astropy.units.Quantity
         if as_skymap:
             return HealPixSkymap(nested_skymap, self.distmu, self.distsigma, self.distnorm, moc=False)
         
@@ -120,7 +116,9 @@ class HealPixSkymap():
     def neutrinoskymap(self, ra, dec, sigma, normalize=True):
         """Returns PartialUniqSkymap of the neutrino detection as
         a Gaussian point spread function centered around the right
-        ascension and declination with sigma uncertainty.
+        ascension and declination with sigma uncertainty. 
+        Neurino's skymap is in the same shape and nside as the 
+        skymap used to generate it.
         
         Parameters
         ----------
@@ -134,9 +132,16 @@ class HealPixSkymap():
         if not self.moc:
             return psf_gaussian(ra, dec, sigma, nside=self.nside)
 
+    def to_table(self):
+        from astropy.table import QTable
+        if self.moc:
+            data = {'UNIQ': self.uniq, 'PIXELS': self.pixels, 'DISTMU': self.distmu, 'DISTSIGMA': self.distsigma, 'DISTNORM': self.distnorm}
+        else:
+            data = {'IPIX': self.ipix, 'PIXELS': self.pixels, 'DISTMU': self.distmu, 'DISTSIGMA': self.distsigma, 'DISTNORM': self.distnorm}
+        return QTable(data)
+
     def plot(self):
         from hpmoc import PartialUniqSkymap
-        s = PartialUniqSkymap(self.pixels, )
 
 # class HealPixSkyMap():
 #     def __init__(self, skymap, moc=True, nest=True):

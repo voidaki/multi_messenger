@@ -14,8 +14,7 @@ from utils import (
     t_overlap
 )
 from skymap import (
-    GWSkyMap,
-    neutrinoskymap,
+    HealPixSkymap,
     emptyskymap,
     Aeffskymap
 )
@@ -87,7 +86,7 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
     for neutrino in neutrino_list:
         count += 1
         a = emptyskymap(t_overlap(tgw, neutrino.gps, search_params)*Paeffe(neutrino.epsilon, neutrino.dec)*sky_dist(), gw_skymap)
-        summednuskymap += a*neutrinoskymap(neutrino.ra, neutrino.dec, neutrino.sigma, gw_skymap, normalize=False)
+        summednuskymap += a*gw_skymap.neutrinoskymap(neutrino.ra, neutrino.dec, neutrino.sigma, normalize=False)
     
     def integrand(Enu, r):
         return 1

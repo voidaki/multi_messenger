@@ -36,27 +36,39 @@ def uniform_allsky(right_ascension, declination):
     return 0
 
 
-def Paeffe(epsilon, declination):
-    """Returns the probability of the given sky location and energy level
-    using the effective area.
+# def Paeffe(epsilon, declination, search_params=search_parameters("bns")):
+#     """Returns the probability of the given sky location and energy level
+#     using the effective area.
     
-    Parameters
-    ----------
-    epsilon: float
-        Reconstructed energy of the neutrino, in GeV.
-    declination: float
-        Declination angle of the IceCube neutrino, in degrees
-    """
-    df = neutrino_data["effective_areas"]["IC86_II_effectiveArea"]
-    condition_epsilon = (df['log10(E_nu/GeV)_min'] <= epsilon) & (epsilon <= df['log10(E_nu/GeV)_max'])
-    condition_declination = (df['Dec_nu_min[deg]'] <= declination) & (declination <= df['Dec_nu_max[deg]'])
-    condition = condition_epsilon & condition_declination
-    filtered_df = df[condition]
-    filtered_df = filtered_df[filtered_df.columns[:]].to_numpy()
+#     Parameters
+#     ----------
+#     epsilon: float
+#         Reconstructed energy of the neutrino, in GeV or log10(E/GeV).
+#     declination: float
+#         Declination angle of the IceCube neutrino, in degrees
+#     """
+#     if epsilon >= 100.0:
+#         epsilon = np.log10(epsilon)
+#     # Clipping neutrino energy inside the bounds
+#     if epsilon < np.log10(search_params.epsilonmin):
+#         epsilon = np.log10(search_params.epsilonmin)
+#     if epsilon > np.log10(search_params.epsilonmax):
+#         epsilon = np.log10(search_params.epsilonmax)
     
-    A_eff = filtered_df[0][4]
+#     df = neutrino_data["effective_areas"]["IC86_II_effectiveArea"]
+#     condition_epsilon = (df['log10(E_nu/GeV)_min'] <= epsilon) & (epsilon <= df['log10(E_nu/GeV)_max'])
+#     condition_declination = (df['Dec_nu_min[deg]'] <= declination) & (declination <= df['Dec_nu_max[deg]'])
+#     condition = condition_epsilon & condition_declination
+#     filtered_df = df[condition]
+#     filtered_df = filtered_df[filtered_df.columns[:]].to_numpy()
+    
+#     A_eff = filtered_df[0][4]
    
-    return A_eff*(10**epsilon)**-2*(4*np.pi)**-1
+#     return A_eff*(10**epsilon)**-2*(4*np.pi)**-1
+
+def Paeffe(epsilon, declination, search_params=search_parameters("bns")):
+    A_eff = Aeff(epsilon, declination, search_params)
+    return A_eff*epsilon**-2*(4*np.pi)**-1
 
 
 def Pempe(epsilon, declination, search_params=search_parameters("bns")):
