@@ -160,18 +160,18 @@ def ndotgwnu(search_params=search_parameters("bns")):
 from utils import Aeff
 import pandas as pd
 
-# df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
+df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
 
-# dec_vals = np.linspace(-90.0, 90.0, 100)
-# for dec in dec_vals:
-#     print(dec, ": ", Aeff(5.54, dec, search_params=search_parameters("bns")))
+dec_vals = np.linspace(-90.0, 90.0, 100)
+for dec in dec_vals:
+    print(dec, ": ", Aeff(5.54, dec, search_params=search_parameters("bns")))
 
-# from likelihood.neutrino import Paeffe
-# from scipy.integrate import nquad
+from likelihood.neutrino import Paeffe
+from scipy.integrate import nquad
 
-# search_params = search_parameters("bns")
-# result, _ = nquad(Paeffe, [(search_params.epsilonmin, search_params.epsilonmax), (-90.0, 90.0)])
-# print(result)
+search_params = search_parameters("bns")
+result, _ = nquad(Paeffe, [(search_params.epsilonmin, search_params.epsilonmax), (-90.0, 90.0)])
+print(result)
 
 from data_loading import retrieve_event
 from skymap import *

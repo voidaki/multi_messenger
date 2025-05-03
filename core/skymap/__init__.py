@@ -99,7 +99,7 @@ class HealPixSkymap():
         return area_per_deg2*u.deg**-2
     
     def allsky_integral(self):
-        return 1
+        return sum(self.pixels)
 
     def steradian2deg(self, pixels = None):
         """
