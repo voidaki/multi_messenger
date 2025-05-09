@@ -1,6 +1,6 @@
 
 class HealPixSkymap():
-    def __init__(self, pixels, distmu, distsigma, distnorm, uniq=None, moc=True, nest=True):
+    def __init__(self, pixels, distmu=None, distsigma=None, distnorm=None, uniq=None, moc=True, nest=True):
         """
         A HealPix Skymap object, written to typically handle the multi-order
         skymaps provided by LIGO-VIRGO-KARGA colab. Contains the functions
@@ -15,9 +15,9 @@ class HealPixSkymap():
         self.distnorm = distnorm
         self.moc = moc
         self.nest = nest
+        self.uniq = uniq
 
         if moc:
-            self.uniq = uniq
             level, ipix = ah.uniq_to_level_ipix(self.uniq)
             nside = ah.level_to_nside(level)
             self.nside = nside
@@ -61,10 +61,11 @@ class HealPixSkymap():
 
         return np.array(ra), np.array(dec)
     
-    def uniq2nested(self): # FIXME
-        pass
+    def ipix2uniq(self): 
+        import numpy as np
+        return self.ipix + np.full(len(self.pixels), 4*self.nside**2, dtype=int)
 
-    def rasterize(self, nest=True, as_skymap=False):
+    def rasterize(self, pad=None, nest=True, as_skymap=False):
         """
         Rasterize a NUNIQ Healpix multi-order skymap into all-sky skymap
         with a constant nside value obtained from the highest resolution
@@ -77,31 +78,37 @@ class HealPixSkymap():
             HealPixSkymap instance if as_skymap is set True
         """
         from hpmoc.utils import fill
-        import astropy.units as u
         max_nside = max(self.nside)
-        nested_skymap = fill(self.uniq, self.pixels, max_nside)
-        if self.moc:
+        if pad is None:
+            nested_skymap = fill(self.uniq, self.pixels, max_nside)
+        else:
+            nested_skymap = fill(self.uniq, self.pixels, max_nside, pad=pad)
+        if self.distmu is not None:
             self.distmu = fill(self.uniq, self.distmu, max_nside)
             self.distsigma = fill(self.uniq, self.distsigma, max_nside)
             self.distnorm = fill(self.uniq, self.distnorm, max_nside)
         if not as_skymap:
             return nested_skymap # as astropy.units.Quantity
         if as_skymap:
-            return HealPixSkymap(nested_skymap, self.distmu, self.distsigma, self.distnorm, moc=False)
+            return HealPixSkymap(nested_skymap, self.distmu, self.distsigma, self.distnorm, uniq=self.ipix2uniq(),  moc=False)
         
-    def nside2area_per_pix(self):
+    def nside2pixarea(self):
         """Returns area per pixel, in 1/steradian if steradian is True
         in 1/deg^2 if its set False."""
         import healpy as hp
         import astropy.units as u
-        
-        area_per_deg2 = hp.nside2pixarea(self.nside, degrees=True)
-        return area_per_deg2*u.deg**-2
+
+        return hp.nside2pixarea(self.nside)*u.sr
     
     def allsky_integral(self):
-        return sum(self.pixels)
+        import healpy as hp
+        import astropy.units as u
+        pix_area = hp.nside2pixarea(self.nside)*u.sr
+        prob_map = self.pixels*pix_area
+        prob_map = prob_map.to(u.dimensionless_unscaled).value
+        return prob_map.sum()
 
-    def steradian2deg(self, pixels = None):
+    def steradian2deg(self, pixels = None): #FIXME
         """
         Converts 1 / sr probability density skymap pixel array
         into 1 / deg^2 probability density.
@@ -134,14 +141,30 @@ class HealPixSkymap():
 
     def to_table(self):
         from astropy.table import QTable
-        if self.moc:
-            data = {'UNIQ': self.uniq, 'PIXELS': self.pixels, 'DISTMU': self.distmu, 'DISTSIGMA': self.distsigma, 'DISTNORM': self.distnorm}
+        if self.distmu is not None:
+            if self.moc:
+                data = {'UNIQ': self.uniq, 'PIXELS': self.pixels, 'DISTMU': self.distmu, 'DISTSIGMA': self.distsigma, 'DISTNORM': self.distnorm}
+            else:
+                data = {'IPIX': self.ipix, 'PIXELS': self.pixels, 'DISTMU': self.distmu, 'DISTSIGMA': self.distsigma, 'DISTNORM': self.distnorm}
         else:
-            data = {'IPIX': self.ipix, 'PIXELS': self.pixels, 'DISTMU': self.distmu, 'DISTSIGMA': self.distsigma, 'DISTNORM': self.distnorm}
+            if self.moc:
+                data = {'UNIQ': self.uniq, 'PIXELS': self.pixels}
+            else:
+                data = {'IPIX': self.ipix, 'PIXELS': self.pixels}
         return QTable(data)
 
-    def plot(self):
-        from hpmoc import PartialUniqSkymap
+    def plot(self, neutrino_list=None, title=None): #FIXME add title
+        if neutrino_list is None:
+            from hpmoc import plot
+            if self.moc:
+                plot.plot((self.pixels, self.uniq))
+            else:
+                plot.plot(self.pixels)
+        else:
+            from hpmoc.plotters import mollview, PointsTuple
+            points = [(neutrino.ra, neutrino.dec, neutrino.sigma) for neutrino in neutrino_list]
+            neutrino_points = PointsTuple(points, label=(f"neutrino {i}" for i in range(len(neutrino_list))))
+            mollview(self.pixels, neutrino_points)
 
 # class HealPixSkyMap():
 #     def __init__(self, skymap, moc=True, nest=True):
@@ -187,16 +210,25 @@ def emptyskymap(val, skymap):
 
     nside = skymap.nside
     npix = hp.nside2npix(nside)
-
-    emptymap = np.full(npix, val, dtype=np.float64)
+    emptymap = np.full((npix,), val, dtype=np.float64)
     emptymap = hp.reorder(emptymap, inp='RING', out='NESTED')
-    return emptymap
+
+    return HealPixSkymap(emptymap, moc=False)
 
 
-def Aeff_skymap(epsilon, skymap):
-    import healpy as hp
+def Aeff_skymap(epsilon, skymap=None): # FIXME add a check if skymap.nside == Aeff_skymap.nside, if not: increase the resolution of Aeff_skymap with rasterize()
     import numpy as np
+    from pathlib import Path
+    from utils import epsilon_dict
 
-    from utils import Aeff
-    aeff = Aeff(epsilon)
+    for i in range(41):
+        if np.log10(epsilon) >= epsilon_dict()[i]:
+            epsilon_index = i
+            break
+        else:
+            epsilon_index = 41
+    aeff_filepath = Path("../data/neutrino_data/aeff_skymaps") / f"effective_area{epsilon_index}.npy"
+    s = np.load(aeff_filepath)
+
+    return HealPixSkymap(s*epsilon**-2, moc=False)
 

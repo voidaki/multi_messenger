@@ -6,6 +6,7 @@ from scipy.integrate import nquad
 from likelihood import Paeffe
 
 from utils import (
+    t_overlap,
     IceCubeLIGO,
     expnu,
     search_parameters,
@@ -35,6 +36,66 @@ az_source = gw_data["azimuth"]
 nu_data = load_neutrino_data()
 dataframes_events = nu_data["events"]
  
+from utils import epsilon_dict
+from multiprocessing import Pool
+
+def Aeff_worker(args):
+    epsilon, dec, search_params = args
+    return Aeff(epsilon, dec, search_params)
+
+def plot_effective_area_map(effective_area, title='Effective Area Skymap'):
+    hp.mollview(
+        effective_area,
+        coord='C',  # 'C' = equatorial coordinates
+        unit='cm²/GeV²',
+        title=title,
+        norm=None,
+        cmap='viridis'
+    )
+    hp.graticule()
+    plt.show()
+
+def Aeff_skymap(epsilon, skymap, search_params, processes=8):
+    import numpy as np
+    dec = skymap.nside2ang()[1]
+    args_list = [(epsilon, d, search_params) for d in dec]
+
+    with Pool(processes=processes) as pool:
+        effective_area = pool.map(Aeff_worker, args_list)
+
+    effective_area = np.array(effective_area)
+    return effective_area
+
+
+def effective_area_skymap_generator():
+    # runtime ~an hour
+    epsilon_vals = [10**epsilon for epsilon in epsilon_dict()]
+
+    for i in range(len(epsilon_vals)):
+        area_effective = Aeff_skymap(epsilon_vals[i], full_skymap, search_params=search_parameters("bns"))
+        np.save(f"effective_area{i}.npy", area_effective)
+        np.savetxt(f'effective_area{i}.csv', area_effective, delimiter=',')
+        print(f"Effective Area skymap for the epsilon {epsilon_vals[i]} completed!")
+        if i in [0, 5, 10, 15]:
+            plot_effective_area_map(area_effective)
+
+def allsky_aeff_integral_all_epsilon():
+    # Returns 2.1242380368322262
+    from pathlib import Path
+    aeff_directory = Path("../data/neutrino_data/aeff_skymaps")
+
+    aeff_integrals = []
+    for i in range(41):
+        filepath = aeff_directory / f"effective_area{i}.npy"
+        epsilon = 10**epsilon_dict()[i]
+        s = np.load(filepath)*epsilon**-2
+        AeffSkymap = HealPixSkymap(s*1/u.sr, moc=False)
+        integral = AeffSkymap.allsky_integral()
+        aeff_integrals.append(integral)
+        print(integral)
+
+    print(sum(aeff_integrals)*4*np.pi)
+
 def ndotgw(search_params=search_parameters("bns")):
     """Returns the observable GW rate, calculated in 
     the integral in eq. (26).
@@ -133,7 +194,7 @@ def ndotgwnu(search_params=search_parameters("bns")):
     Parameters
     ----------
     search_params: Constant parameters for the model."""
-    from scipy.integrate import quad
+    from scipy.integrate import nquad
     def Pgw(r):
         """Histogram of the O3-sensitivity estimates injections.
             
@@ -154,36 +215,72 @@ def ndotgwnu(search_params=search_parameters("bns")):
 
         return counts[bin_i]/len(distance_source)
     
-    def Pnu(r, Enu, theta):
-        pass
+    def integrant(r, Enu, theta, phi):
+        return r**2*Pgw(r)*np.sin(theta)*(1-np.exp(-expnu(r, Enu, search_params)))
+    
+    return nquad(integrant, [(np.min(distance_source), np.max(distance_source)), (search_params.Enumin, search_params.Enumax), (0, 2*np.pi), (0, np.pi)])
+        
 
+search_params=search_parameters("bns")
 from utils import Aeff
-import pandas as pd
+
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
 
-dec_vals = np.linspace(-90.0, 90.0, 100)
-for dec in dec_vals:
-    print(dec, ": ", Aeff(5.54, dec, search_params=search_parameters("bns")))
+# dec_vals = np.linspace(-90.0, 90.0, 100)
+# for dec in dec_vals:
+#     print(dec, ": ", Aeff(5.54, dec, search_params=search_parameters("bns"))) 
 
 from likelihood.neutrino import Paeffe
 from scipy.integrate import nquad
 
-search_params = search_parameters("bns")
-result, _ = nquad(Paeffe, [(search_params.epsilonmin, search_params.epsilonmax), (-90.0, 90.0)])
-print(result)
+# result, _ = nquad(Paeffe, [(search_params.epsilonmin, search_params.epsilonmax), (-89.9, 89.9)])
+# print("integral is:", result, "error is:", _)
+# print("ndotgwnu Result and error is: ", ndotgwnu())
 
 from data_loading import retrieve_event
 from skymap import *
 import matplotlib.pyplot as plt
 import hpmoc
+from utils import IceCubeNeutrino
 
 skymap, tgw, far = retrieve_event('S250326y')
+from astropy.time import Time
+
+neutrino_list = [IceCubeNeutrino(Time(tgw-1.1, format='gps').mjd, -57.08, -29.42, 0.5, 4.2*10**4), 
+                 IceCubeNeutrino(Time(tgw+1.3, format='gps').mjd, -67.1, -19.8, 0.8, 3.3*10**5)]
 
 gw_skymap = HealPixSkymap.readQtable(skymap)
 print(gw_skymap.to_table())
 full_skymap = gw_skymap.rasterize(as_skymap=True)
+# full_skymap.plot(neutrino_list=neutrino_list)
+# plt.show()
 print(full_skymap.to_table())
+print("all sky integral is: ", full_skymap.allsky_integral())
 print(full_skymap.nside, full_skymap.nside2ang(), full_skymap.pixels)
 nu = full_skymap.neutrinoskymap(31.5, -41.43, 0.5)
-print("\n", nu)
+nu_skymap = HealPixSkymap(nu.s, uniq=nu.u).rasterize(pad=0, as_skymap=True)
+
+print(nu_skymap.to_table())
+import healpy as hp
+import astropy.units as u
+def skymap_integral(gwskymap, neutrino_list):
+    pix_area = hp.nside2pixarea(gwskymap.nside)*u.sr
+    nuskymap = emptyskymap(0.0, gwskymap)
+    for neutrino in neutrino_list:
+        a = gwskymap.neutrinoskymap(neutrino.ra, neutrino.dec, neutrino.sigma)
+        a = HealPixSkymap(a.s, uniq=a.u).rasterize(pad=0., as_skymap=True)
+        nuskymap.pixels += (a.pixels*pix_area).to(u.dimensionless_unscaled).value
+    prob_dens = gwskymap.pixels*nuskymap.pixels
+    prob_map = (prob_dens*pix_area).to(u.dimensionless_unscaled).value
+    return prob_map.sum()
+
+from scipy.stats import poisson
+from coincidence_sig import TS
+
+full_skymap.plot(neutrino_list)
+plt.show()
+print(TS(tgw, full_skymap, far, neutrino_list))

@@ -25,6 +25,6 @@ def retrieve_event(event_name):
     
     skymap = QTable.read(filename)
     
-    skymap.write(save_name, overwrite=True)
+    # skymap.write(save_name, overwrite=True)
     return skymap, t_GW, far
 

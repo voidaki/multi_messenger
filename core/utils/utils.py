@@ -148,11 +148,11 @@ def Pfar(far):
 #     return A_eff
 
 def angle_dict():
-    return [90.00, 73.74, 66.93, 61.64, 57.14, 
-            53.13, 49.46, 46.05, 42.84, 39.79, 
-            36.87, 34.06, 31.33, 28.69, 26.10,
-            23.58, 21.10, 18.66, 16.26, 13.89,
-            11.54, 9.21, 6.89, 4.59, 2.29, 0.0]
+    return [0.0, 2.29, 4.59, 6.89, 9.21,
+            11.54, 13.89, 16.26, 18.66, 21.10,
+            23.58, 26.10, 28.69, 31.33, 34.06,
+            36.87, 39.79, 42.84, 46.05, 49.46,
+            53.13, 57.14, 61.64, 66.93, 73.74, 90.00]
 
 def epsilon_dict():
     return [2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2,
@@ -160,7 +160,7 @@ def epsilon_dict():
             4.8, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0,
             6.2, 6.4, 6.6, 6.8, 7.0, 7.2, 7.4,
             7.6, 7.8, 8.0, 8.2, 8.4, 8.6, 8.8,
-            9.0, 9.2, 9.4, 9.6, 9.8, 10.0]
+            9.0, 9.2, 9.4, 9.6, 9.8, 10.0] # log10(epsilon/GeV)
 
 def Aeff(epsilon, declination, search_params):
     """Returns the corresponding effective area of the neurino detection with 
@@ -189,22 +189,20 @@ def Aeff(epsilon, declination, search_params):
 
     df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
 
-    dec = abs(declination)
     dec_angles = np.array(angle_dict())
-    dec_index = sum(dec < dec_angles) 
-
+    dec = abs(declination)
+    dec_index = np.sum(dec_angles < dec) - 1
     epsilon_index = int((epsilon - 2.0)/0.2)
-
+ 
     if declination < 0:
         row = df[(df['log10(E_nu/GeV)_min'] == epsilon_dict()[epsilon_index]) & (df['Dec_nu_min[deg]'] == -dec_angles[dec_index])]
     else:
         row = df[(df['log10(E_nu/GeV)_min'] == epsilon_dict()[epsilon_index]) & (df['Dec_nu_min[deg]'] == dec_angles[dec_index])]
 
     if not row.empty:
-        Aeff = row.iloc[0]['A_Eff[cm^2]']
+        return row.iloc[0]['A_Eff[cm^2]']
     else:
-        Aeff = 0
-    return Aeff
+        return 0.
 
 
 def expnu(r, Enu,  search_params):
@@ -279,22 +277,22 @@ def search_parameters(population):
     population: "bbh", "bns", or "nsbh"
     """
     return IceCubeLIGO(
-        nu_51_100 = 1.1,
+        nu_51_100 = 2.12,
         tgwplus = 250., # s
         tgwminus = -250., # s
         tnuplus = 250., # s
         tnuminus = -250., # s
         fb = 10.0, 
-        ratebggw = 3.0*2.3*10**-5, # 1/s, 2 per day per pipeline (gstlal, mbta)
+        ratebggw = 5.0*2.3*10**-5, # 1/s, 2 per day per pipeline (gstlal, mbta)
         ratebgnu = 0.0035055081034729364, # Background neurino rate, per second (1/s)
-        ndotgw = 3.9255868248144146, # per year
-        ndotnu = 2.7402641832764836e-05, # per year
-        ndotgwnu = 1, #FIXME
+        ndotgw = 3.9255868248144146*3.16*10**-8, # per second
+        ndotnu = 2.7402641832764836e-05*3.16*10**-8, # per second
+        ndotgwnu = 2.7402641832764836e-05*3.16*10**-8/2.0, #FIXME currently ndotnu/2
         Mgwmax = 2.5*1.988*10**30, # 2.5 Solar Masses in Kgs for bns
         Mgwmin = 1.0*1.988*10**30, # 1.0 Solar Masses in Kgs for bns
         Enumax = 10**51, # erg
         Enumin = 10**46, # erg
-        epsilonmax = 10**8, # GeV
+        epsilonmax = 10.0**10, # GeV
         epsilonmin = 10.0**2, # GeV
         farthr = 2.3*10**-5, # Hz
         population=population
@@ -349,13 +347,20 @@ def match_far(gpstime, distance, right_ascension, declination, mass1, mass2):
         ]
     )
 
-class IceCubeNeutrino(BaseModel):
+class IceCubeNeutrino():
     """Class for IceCube's neutrino detections."""
-    mjd: float = Field(..., description="Detection time of the neutrino in MJD units.")
-    ra: float = Field(..., description="Right ascension angle of the neutrino. [Deg]")
-    dec: float = Field(..., description="Declination angle of the neutrino. [Deg]")
-    epsilon: float = Field(..., description="Reconstructed energy of the neutrino. [GeV]")
-    sigma: float = Field(..., description="Uncertainty radius of neutrino detection. [Deg]")
+    def __init__(self, mjd, ra, dec, sigma, epsilon):
+        self.mjd = mjd
+        self.ra = ra
+        self.dec = dec
+        self.sigma = sigma
+        self.epsilon = epsilon
+
+    # mjd: float = Field(..., description="Detection time of the neutrino in MJD units.")
+    # ra: float = Field(..., description="Right ascension angle of the neutrino. [Deg]")
+    # dec: float = Field(..., description="Declination angle of the neutrino. [Deg]")
+    # epsilon: float = Field(..., description="Reconstructed energy of the neutrino. [GeV]")
+    # sigma: float = Field(..., description="Uncertainty radius of neutrino detection. [Deg]")
 
     def gps(self):
         """Converts mjd time format into gps time used in GW detections."""
