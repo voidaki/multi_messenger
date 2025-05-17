@@ -205,6 +205,10 @@ def Aeff(epsilon, declination, search_params):
         return 0.
 
 
+def expnu_new(r, Enu, dec, search_params):
+    
+    return 1.
+
 def expnu(r, Enu,  search_params):
     """Count of expected neutrinos."""
     return search_params.nu_51_100*(Enu/search_params.Enumax)*(100/r)**2

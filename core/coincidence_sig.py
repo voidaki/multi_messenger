@@ -53,7 +53,7 @@ def Phgwnu(search_params=search_parameters("bns")):
     return search_params.ndotgwnu
 
 
-def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns")):
+def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns")): # FIXME add cbc check, if the superevent is burst or not
     """Returns the signal likelihood in eq (3) 
     
     Parameters
@@ -67,11 +67,14 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
     neutrino_list: list
         List of all neutrinos in the time frame, as IceCubeNeutrino instance
     search_params: Collection of constant search parameters for this model.
+    cbc: bool
+        Whether this is a CBC (compact binary coalescence) group trigger or a
+        burst trigger. True for cbc group, false for unmodeled searches.
 
     Returns
     -------
     Signal hypothesis likelihood for candidate multi-messenger (GW&HEN) detections
-        P(x|θ,H_s)P(θ|H_s) Integrated over allsky and time, parameters
+        P(x|θ,H_s)P(θ|H_s) Integrated over all-sky and parameters
     """
 
     from scipy.integrate import nquad
@@ -180,4 +183,5 @@ def TS(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns"
     SLwonu(tgw, gw_skymap, far, neutrino_list, search_params)*Phgw0() + 
     null_likelihood(far, neutrino_list, search_params)*Ph00())
     print(nominator)
+    print(denominator)
     return nominator/denominator

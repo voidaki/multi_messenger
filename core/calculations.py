@@ -2,7 +2,7 @@ import numpy as np
 from data_loading import load_gravitational_wave_data, load_neutrino_data
 from tqdm import tqdm
 from scipy.integrate import nquad
-
+import healpy as hp
 from likelihood import Paeffe
 
 from utils import (
@@ -67,7 +67,7 @@ def Aeff_skymap(epsilon, skymap, search_params, processes=8):
     return effective_area
 
 
-def effective_area_skymap_generator():
+def effective_area_skymap_generator(full_skymap):
     # runtime ~an hour
     epsilon_vals = [10**epsilon for epsilon in epsilon_dict()]
 
@@ -82,12 +82,13 @@ def effective_area_skymap_generator():
 def allsky_aeff_integral_all_epsilon():
     # Returns 2.1242380368322262
     from pathlib import Path
+    import astropy.units as u
     aeff_directory = Path("../data/neutrino_data/aeff_skymaps")
 
     aeff_integrals = []
     for i in range(41):
         filepath = aeff_directory / f"effective_area{i}.npy"
-        epsilon = 10**epsilon_dict()[i]
+        epsilon = 10.0**epsilon_dict()[i]
         s = np.load(filepath)*epsilon**-2
         AeffSkymap = HealPixSkymap(s*1/u.sr, moc=False)
         integral = AeffSkymap.allsky_integral()
@@ -195,31 +196,68 @@ def ndotgwnu(search_params=search_parameters("bns")):
     ----------
     search_params: Constant parameters for the model."""
     from scipy.integrate import nquad
-    def Pgw(r):
-        """Histogram of the O3-sensitivity estimates injections.
-            
-        Parameters
-        ----------
-        r: float
-            Distance of the gravitational wave event, in Mpc
-        """
+    import matplotlib.pyplot as plt
+    from scipy.interpolate import interp1d
+
+    # subthresholds = np.logical_or((far_gstlal <= 2), (far_mbta <= 2), (far_pycbc_hyperbank <= 2))
+    # rsubthreshold = distance_source[subthresholds]
+        
+    # counts, bin_edges = np.histogram(rsubthreshold, bins=100, range=(0, 700))
+
+    def make_Pgw():
         subthresholds = np.logical_or((far_gstlal <= 2), (far_mbta <= 2), (far_pycbc_hyperbank <= 2))
         rsubthreshold = distance_source[subthresholds]
         
-        counts, bin_edges = np.histogram(rsubthreshold, bins=100)
-
-        if r < bin_edges[0] or r > bin_edges[-1]:
-            return 0
-    
-        bin_i = np.digitize(r, bin_edges) - 1
-
-        return counts[bin_i]/len(distance_source)
-    
-    def integrant(r, Enu, theta, phi):
-        return r**2*Pgw(r)*np.sin(theta)*(1-np.exp(-expnu(r, Enu, search_params)))
-    
-    return nquad(integrant, [(np.min(distance_source), np.max(distance_source)), (search_params.Enumin, search_params.Enumax), (0, 2*np.pi), (0, np.pi)])
+        counts, bin_edges = np.histogram(rsubthreshold, bins=100, range=(0, 700), density=True)
+        bin_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
         
+        # Avoid log(0), NaNs
+        counts = np.maximum(counts, 1e-10)
+
+        return interp1d(bin_centers, counts, bounds_error=False, fill_value=0.0)
+
+    Pgw_interp = make_Pgw()
+
+    def Pgw(r):
+        return Pgw_interp(r)
+
+    # def Pgw(r):
+    #     """Histogram of the O3-sensitivity estimates injections.
+            
+    #     Parameters
+    #     ----------
+    #     r: float
+    #         Distance of the gravitational wave event, in Mpc
+    #     """
+    #     if r < bin_edges[0] or r > bin_edges[-1]:
+    #         return 0
+    
+    #     bin_i = np.clip(np.digitize(r, bin_edges) - 1, 0, len(counts) - 1)
+
+    #     return counts[bin_i]/len(distance_source)
+    
+    # def integrant(r, Enu, theta):
+    #     return r**2*Pgw(r)*np.sin(theta)*(1-np.exp(-search_params.nu_51_100*(Enu/search_params.Enumax)*(100/r)**2))
+
+    def integrand_vec(x):
+        r, Enu, theta = x[:, 0], x[:, 1], x[:, 2]
+        return r**2 * Pgw(r) * np.sin(theta) * (1 - np.exp(-expnu(r, Enu, search_params)))
+    
+    N = 100000
+    r_samples = np.random.uniform(0, 700, N)
+    enu_samples = np.random.uniform(search_params.Enumin, search_params.Enumax, N)
+    theta_samples = np.random.uniform(0, 2*np.pi, N)
+
+    samples = np.stack([r_samples, enu_samples, theta_samples], axis=-1)
+    vals = integrand_vec(samples)
+
+    volume = 700 * (search_params.Enumax - search_params.Enumin) * (2 * np.pi)
+    integral = np.mean(vals) * volume
+    print("Integral ≈", integral)
+    # return nquad(integrant, [(4.5, 695.0), (search_params.Enumin, search_params.Enumax), (0.0, 2*np.pi)], opts=[{"limit": 200}])
+        
+
+print(ndotgwnu())
 
 search_params=search_parameters("bns")
 from utils import Aeff
@@ -247,40 +285,51 @@ import matplotlib.pyplot as plt
 import hpmoc
 from utils import IceCubeNeutrino
 
-skymap, tgw, far = retrieve_event('S250326y')
+# skymap, tgw, far = retrieve_event('S250326y')
 from astropy.time import Time
 
-neutrino_list = [IceCubeNeutrino(Time(tgw-1.1, format='gps').mjd, -57.08, -29.42, 0.5, 4.2*10**4), 
-                 IceCubeNeutrino(Time(tgw+1.3, format='gps').mjd, -67.1, -19.8, 0.8, 3.3*10**5)]
+# neutrino_list = [IceCubeNeutrino(Time(tgw-1.1, format='gps').mjd, 98.54, 54.1, 0.5, 4.2*10**4.2), 
+#                  IceCubeNeutrino(Time(tgw+1.3, format='gps').mjd, 101.2, 62.9, 0.8, 3.3*10**5.5)]
 
-gw_skymap = HealPixSkymap.readQtable(skymap)
-print(gw_skymap.to_table())
-full_skymap = gw_skymap.rasterize(as_skymap=True)
-# full_skymap.plot(neutrino_list=neutrino_list)
-# plt.show()
-print(full_skymap.to_table())
-print("all sky integral is: ", full_skymap.allsky_integral())
-print(full_skymap.nside, full_skymap.nside2ang(), full_skymap.pixels)
-nu = full_skymap.neutrinoskymap(31.5, -41.43, 0.5)
-nu_skymap = HealPixSkymap(nu.s, uniq=nu.u).rasterize(pad=0, as_skymap=True)
+# gw_skymap = HealPixSkymap.readQtable(skymap)
+# print(gw_skymap.to_table())
+# full_skymap = gw_skymap.rasterize(as_skymap=True)
+# # full_skymap.plot(neutrino_list=neutrino_list)
+# # plt.show()
+# print(full_skymap.to_table())
+# print("all sky integral is: ", full_skymap.allsky_integral())
+# print(full_skymap.nside, full_skymap.nside2ang(), full_skymap.pixels)
+# nu = full_skymap.neutrinoskymap(31.5, -41.43, 0.5)
+# nu_skymap = HealPixSkymap(nu.s, uniq=nu.u).rasterize(pad=0, as_skymap=True)
 
-print(nu_skymap.to_table())
-import healpy as hp
-import astropy.units as u
-def skymap_integral(gwskymap, neutrino_list):
-    pix_area = hp.nside2pixarea(gwskymap.nside)*u.sr
-    nuskymap = emptyskymap(0.0, gwskymap)
-    for neutrino in neutrino_list:
-        a = gwskymap.neutrinoskymap(neutrino.ra, neutrino.dec, neutrino.sigma)
-        a = HealPixSkymap(a.s, uniq=a.u).rasterize(pad=0., as_skymap=True)
-        nuskymap.pixels += (a.pixels*pix_area).to(u.dimensionless_unscaled).value
-    prob_dens = gwskymap.pixels*nuskymap.pixels
-    prob_map = (prob_dens*pix_area).to(u.dimensionless_unscaled).value
-    return prob_map.sum()
+# print(nu_skymap.to_table())
 
-from scipy.stats import poisson
 from coincidence_sig import TS
+from data_loading import retrieve_event
 
-full_skymap.plot(neutrino_list)
-plt.show()
-print(TS(tgw, full_skymap, far, neutrino_list))
+# cwb_skymap = retrieve_event("S250201al")[0]
+# print(cwb_skymap)
+
+from pathlib import Path
+
+
+file_path = Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4a")
+
+bayestar = 0
+cwb = 0
+bilby = 0
+mly = 0
+
+for skymap_file in file_path.iterdir():
+    if "bayestar" in skymap_file.name:
+        bayestar += 1
+    if "cwb" in skymap_file.name:
+        cwb += 1
+    if "Bilby" in skymap_file.name:
+        bilby += 1
+    if "mly" in skymap_file.name:
+        mly += 1
+    else:
+        pass
+
+print(f"bayestar count: {bayestar} \ncwb count: {cwb} \nBilby count: {bilby} \nmly count: {mly}" )
