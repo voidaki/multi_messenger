@@ -139,6 +139,7 @@ def SLwogw(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("
     allsky_integral = nuskymap.pixels.sum()*Pempfar(far)
     denominator = search_params.tgwplus - search_params.tgwminus
 
+    print(f"SLwogw: {allsky_integral}, Pemp_far: {Pempfar(far)}")
     return allsky_integral/denominator
 
 def SLwonu(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns")):
@@ -163,16 +164,19 @@ def SLwonu(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("
     allsky_integral = gw_skymap.allsky_integral()*Pfar(far)
     denominator = (search_params.tnuplus - search_params.tnuminus)
     
+    print(f"SLwonu: allsky_integarl:{allsky_integral}, null_nu_prob:{null_nu_prob/denominator*Nnu**-1}  Pfar: {Pfar(far)}")
     return allsky_integral*null_nu_prob/denominator*Nnu**-1
 
 def null_likelihood(far, neutrino_list, search_params=search_parameters("bns")):
     """Returns the null likelihood, ie. both detections are noise."""
     denominator = (search_params.tgwplus - search_params.tgwminus)*(search_params.tnuplus - search_params.tnuminus)
+    print(f"denominator: {denominator}")
     Nnu = len(neutrino_list)
     nominator = 0
     for neutrino in neutrino_list:
         nominator += Pempe(neutrino.epsilon, neutrino.dec, search_params)
 
+    print(f"null likelihood: {Pempfar(far)*nominator*Nnu**-1/denominator}")
     return Pempfar(far)*nominator*Nnu**-1/denominator
     
 

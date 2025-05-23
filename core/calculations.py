@@ -257,7 +257,7 @@ def ndotgwnu(search_params=search_parameters("bns")):
     # return nquad(integrant, [(4.5, 695.0), (search_params.Enumin, search_params.Enumax), (0.0, 2*np.pi)], opts=[{"limit": 200}])
         
 
-print(ndotgwnu())
+# print(ndotgwnu())
 
 search_params=search_parameters("bns")
 from utils import Aeff
@@ -312,24 +312,69 @@ from data_loading import retrieve_event
 
 from pathlib import Path
 
+EMP_NU = np.load("/home/aki/snakepit/multi_messenger_astro/data/neutrino_data/emprical_neutrinos.npy") # each element is np.array(epsilon, ra, dec, sigma)
 
-file_path = Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4a")
+LVK_skymap_folders = [Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4a"),
+                      Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4b"),
+                      Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4c")]
 
-bayestar = 0
-cwb = 0
-bilby = 0
-mly = 0
+LVK_skymap_paths = [file for folder in LVK_skymap_folders
+                    for file in folder.iterdir()]
 
-for skymap_file in file_path.iterdir():
-    if "bayestar" in skymap_file.name:
-        bayestar += 1
-    if "cwb" in skymap_file.name:
-        cwb += 1
-    if "Bilby" in skymap_file.name:
-        bilby += 1
-    if "mly" in skymap_file.name:
-        mly += 1
-    else:
-        pass
+false_alarm_rate_path = Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4_fars")
 
-print(f"bayestar count: {bayestar} \ncwb count: {cwb} \nBilby count: {bilby} \nmly count: {mly}" )
+time_gps = Time('2025-01-01T00:00:00', scale='utc').gps
+time_mjd = Time('2025-01-01T00:00:00', scale='utc').mjd
+
+def gw_event():
+    gw_skymap_path = Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4a/S230627c_Bilby.multiorder.fits") # 1e-26
+    skymap = HealPixSkymap.load_locally(gw_skymap_path, burst=False).rasterize(as_skymap=True)
+    graceid = gw_skymap_path.name.split('_')[0]
+    far_path = false_alarm_rate_path / (graceid + "_far.npy")
+    far = np.load(far_path)
+    neutrino_list = [IceCubeNeutrino(time_mjd, 160.1, 48.1, 1.2, 10**4.5)]
+    skymap.plot(neutrino_list)
+    plt.show()
+    print(TS(time_gps, skymap, far, neutrino_list))
+
+# gw_event()
+
+import glob
+import os
+
+# Set the directory containing your .npy files
+directory = '/home/aki/snakepit/multi_messenger_astro/core/nullstat'
+
+# Get list of all .npy files
+file_list = sorted(glob.glob(os.path.join(directory, '*.npy')))
+
+# Load and concatenate
+all_null_stats = np.concatenate([np.load(f) for f in file_list])
+all_null_stats = all_null_stats[all_null_stats <= 1.0]
+all_null_stats = all_null_stats[all_null_stats != 0.0]
+
+print(f"Loaded {len(file_list)} files.")
+print(f"Total null statistics: {len(all_null_stats)}")
+
+threshold = 1e-40
+null_stats_thresholded = np.where(all_null_stats < threshold, 0, all_null_stats)
+epsilon = 1e-40
+null_stats_clipped = np.clip(null_stats_thresholded, epsilon, None)
+print(null_stats_clipped)
+
+n_zeros = np.sum(null_stats_clipped == 0)
+print(f"Number of zero statistics (≤ 1e-40): {n_zeros}")
+
+log_null_stats = -np.log10(null_stats_clipped)
+print(log_null_stats)
+
+# Plot histogram
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(8, 5))
+plt.hist(log_null_stats, bins=100, color='skyblue', edgecolor='black')
+plt.xlabel(r'$-\log_{10}$(test statistic)')
+plt.ylabel('Frequency')
+plt.title('Distribution of Null Test Statistics')
+plt.grid(True)
+plt.show()

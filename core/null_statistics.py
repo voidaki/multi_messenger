@@ -1,6 +1,10 @@
 from pathlib import Path
 import numpy as np
+import random
 from astropy.time import Time
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+import bisect
 
 from coincidence_sig import *
 
@@ -18,11 +22,76 @@ false_alarm_rate_path = Path("/home/aki/snakepit/multi_messenger_astro/data/gw_d
 start_gps = Time('2024-01-01T00:00:00', scale='utc').gps
 end_gps   = Time('2025-01-01T00:00:00', scale='utc').gps
 
+start_mjd = Time('2024-01-01T00:00:00', scale='utc').mjd
+end_mjd = Time('2025-01-01T00:00:00', scale='utc').mjd
+
+burst_pipelines = ['cwb', 'mly', 'olib']
+
+search_params = search_parameters("bns")
+
 def random_gw_event():
-    pass
+    gw_skymap_path = random.choice(LVK_skymap_paths)
+    graceid = gw_skymap_path.name.split('_')[0]
+    pipeline = gw_skymap_path.name.split('_')[1].replace('.multiorder.fits', '')
+
+    if pipeline in burst_pipelines:
+        burst = True
+    else:
+        burst = False
+    
+    far_path = false_alarm_rate_path / (graceid + "_far.npy")
+    far = np.load(far_path)
+    tgw = np.random.uniform(start_gps, end_gps)
+    gw_skymap = HealPixSkymap.load_locally(gw_skymap_path, burst=burst, title=graceid)
+    return tgw, float(far), gw_skymap
 
 def random_nu_event():
-    pass
+    nu = random.choice(EMP_NU)
+    nu_mjd = np.random.uniform(start_mjd, end_mjd)
+    return IceCubeNeutrino(nu_mjd, nu[1], nu[2], nu[3], 10.0**nu[0])
 
-def generate_null_statistics(Nevents):
-    pass
+def generate_null_statistics(Nevents,index):
+    random_generated_neutrinos = []
+    null_stat = []
+    for i in tqdm(range(Nevents), desc=f'Generating random events for run {index}'):
+        random_generated_neutrinos.append(random_nu_event())
+    
+    random_generated_neutrinos.sort(key=lambda n: n.gps)
+    gps_list = [n.gps for n in random_generated_neutrinos]
+    count = 0
+
+    while count < 80:
+        tgw, far, gw_skymap = random_gw_event()
+        skymap = gw_skymap.rasterize(as_skymap=True)
+        
+        left = bisect.bisect_left(gps_list, tgw + search_params.tnuminus)
+        right = bisect.bisect_right(gps_list, tgw + search_params.tnuplus)
+
+        neutrino_list = random_generated_neutrinos[left:right]
+        # print(f"tgw: {tgw}, far: {far}, skymap nside: {skymap.nside}, Nnu: {len(neutrino_list)}")
+        if len(neutrino_list) == 0:
+            test_statistic = 0.
+        else:
+            test_statistic = TS(tgw, skymap, far, neutrino_list)
+        print("test staticstic: ", test_statistic)
+            # if test_statistic > 1e-25:
+            #     skymap.plot(neutrino_list)
+            #     plt.show()
+        
+        count += 1
+        null_stat.append(test_statistic)
+
+    return np.array(null_stat)
+
+import os
+
+for i in range(184, 500):
+    filename = f"null_stat{i}.npy"
+    
+    if os.path.exists(filename):
+        print(f"{filename} exists, skipping.")
+        continue
+
+    null_stat = generate_null_statistics(80000,i,)
+    np.save(filename, null_stat)
+    print(f"{i}th null_statics was generated and saved!")

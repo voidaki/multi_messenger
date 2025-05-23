@@ -1,6 +1,6 @@
 
 class HealPixSkymap():
-    def __init__(self, pixels, distmu=None, distsigma=None, distnorm=None, uniq=None, moc=True, nest=True):
+    def __init__(self, pixels, distmu=None, distsigma=None, distnorm=None, uniq=None, moc=True, nest=True, title=None):
         """
         A HealPix Skymap object, written to typically handle the multi-order
         skymaps provided by LIGO-VIRGO-KARGA colab. Contains the functions
@@ -16,7 +16,8 @@ class HealPixSkymap():
         self.moc = moc
         self.nest = nest
         self.uniq = uniq
-
+        self.title = title
+        
         if moc:
             level, ipix = ah.uniq_to_level_ipix(self.uniq)
             nside = ah.level_to_nside(level)
@@ -62,7 +63,7 @@ class HealPixSkymap():
 
         return HealPixSkymap(pixels, distmu, distsigma, distnorm, uniq, moc=moc)
 
-    def load_locally(filepath, burst=False, moc=True):
+    def load_locally(filepath, burst=False, moc=True, title=None):
         """
         Loads skymap into HealPixSkymap instance from the filepath.
         Filepath should be a in multiorder.fits or multiorder.fits.gz
@@ -94,13 +95,13 @@ class HealPixSkymap():
             if moc:
                 uniq = np.array(skymap["UNIQ"])
 
-            return HealPixSkymap(pixels, distmu, distsigma, distnorm, uniq, moc=moc)
+            return HealPixSkymap(pixels, distmu, distsigma, distnorm, uniq, moc=moc, title=title)
         
         if burst:
             pixels = skymap["PROBDENSITY"]
             if moc:
                 uniq = np.array(skymap["UNIQ"])
-            return HealPixSkymap(pixels, uniq=uniq, moc=moc)
+            return HealPixSkymap(pixels, uniq=uniq, moc=moc, title=title)
 
 
     def nside2npix(self):
@@ -123,7 +124,8 @@ class HealPixSkymap():
         Rasterize a NUNIQ Healpix multi-order skymap into all-sky skymap
         with a constant nside value obtained from the highest resolution
         pixel from the nside array of the multi-order skymap. If there are
-        pixels without a value, they are replaced with hp.UNSEEN
+        pixels without a value, they are replaced with hp.UNSEEN or pad if
+        pad is not None.
 
         Returns
         -------
@@ -146,7 +148,7 @@ class HealPixSkymap():
         if not as_skymap:
             return nested_skymap # as astropy.units.Quantity
         if as_skymap:
-            return HealPixSkymap(nested_skymap, self.distmu, self.distsigma, self.distnorm, uniq=self.ipix2uniq(),  moc=False)
+            return HealPixSkymap(nested_skymap, self.distmu, self.distsigma, self.distnorm, uniq=self.ipix2uniq(),  moc=False, title=self.title)
         
     def nside2pixarea(self):
         """Returns area per pixel, in 1/steradian if steradian is True
@@ -228,7 +230,7 @@ class HealPixSkymap():
                 data = {'IPIX': self.ipix, 'PIXELS': self.pixels}
         return QTable(data)
 
-    def plot(self, neutrino_list=None, title=None): #FIXME add title
+    def plot(self, neutrino_list=None): #FIXME add title
         if neutrino_list is None:
             from hpmoc import plot
             if self.moc:
@@ -237,9 +239,11 @@ class HealPixSkymap():
                 plot.plot(self.pixels)
         else:
             from hpmoc.plotters import mollview, PointsTuple
+            import warnings
+            warnings.filterwarnings("ignore",message=".*edgecolor.*for an unfilled marker.*")
             points = [(neutrino.ra, neutrino.dec, neutrino.sigma) for neutrino in neutrino_list]
             neutrino_points = PointsTuple(points, label=(f"neutrino {i}" for i in range(len(neutrino_list))))
-            mollview(self.pixels, neutrino_points)
+            mollview(self.pixels, neutrino_points, rot=(180.0, 0., 0.), title=self.title)
 
 # class HealPixSkyMap():
 #     def __init__(self, skymap, moc=True, nest=True):
@@ -301,8 +305,8 @@ def Aeff_skymap(epsilon, skymap=None):
             epsilon_index = i
             break
         else:
-            epsilon_index = 41
-    aeff_filepath = Path("../data/neutrino_data/aeff_skymaps") / f"effective_area{epsilon_index}.npy"
+            epsilon_index = 40
+    aeff_filepath = Path("/home/aki/snakepit/multi_messenger_astro/data/neutrino_data/aeff_skymaps") / f"effective_area{epsilon_index}.npy"
     s = np.load(aeff_filepath)
     
     aeff_skymap = HealPixSkymap(s*epsilon**-2, moc=False)
@@ -311,7 +315,9 @@ def Aeff_skymap(epsilon, skymap=None):
         if aeff_skymap.nside == skymap.nside:
             return aeff_skymap
         elif aeff_skymap.nside < skymap.nside:
-            return aeff_skymap.rasterize(nside=skymap.nside)
+            import healpy as hp
+            pix = hp.ud_grade(aeff_skymap.pixels, nside_out=skymap.nside, order_in='NESTED', order_out='NESTED', power=0.0)
+            return HealPixSkymap(pix, moc=False)
     else:
         return aeff_skymap
 

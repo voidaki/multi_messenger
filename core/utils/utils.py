@@ -221,17 +221,23 @@ def Pempfar(far):
     
     Parameters
     ----------
-    far: False alarm rate (Hz)"""
+    far: float 
+        False alarm rate in Hz
+    """
     far_data = GW_BG_FARS
+    if far > 2.3e-5:
+        far = 2.3e-5
+        
     log_bins_1 = np.logspace(-52, -10, num=(52-10)+1)
 
     log_bins_2 = np.logspace(-10, np.log10(2.3e-5), num=4 * (int(np.log10(2.3e-5)) + 10))
 
     bins = np.concatenate([log_bins_1, log_bins_2])
+    bins = np.unique(bins)
 
     counts, bin_edges = np.histogram(far_data, bins=bins, density=True)
-
     bin_widths = np.diff(bin_edges)
+
     probabilities = counts * bin_widths
 
     if far < bin_edges[0] or far > bin_edges[-1]: # False alarm rate is out of range
@@ -366,6 +372,7 @@ class IceCubeNeutrino():
     # epsilon: float = Field(..., description="Reconstructed energy of the neutrino. [GeV]")
     # sigma: float = Field(..., description="Uncertainty radius of neutrino detection. [Deg]")
 
+    @property
     def gps(self):
         """Converts mjd time format into gps time used in GW detections."""
         import astropy.time
