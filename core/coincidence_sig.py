@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from utils import (
     temporal,
     Pr,
@@ -99,16 +100,20 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
     for neutrino in neutrino_list:
         a = emptyskymap(t_overlap(tgw, neutrino.gps, search_params)*sky_dist()*nquad(Pθ_Hs, [(search_params.Enumin, search_params.Enumax), 
                                                                                                (0, 700.0)])[0], gw_skymap)
+        print(f"Neutrino parameters, energy:{neutrino.epsilon}, ra, dec =({neutrino.ra},{neutrino.dec})")
+        print(f"constant skymap a: {a.pixels[0]}, time overlap: {t_overlap(tgw, neutrino.gps, search_params)}")
         nu = gw_skymap.neutrinoskymap(neutrino.ra, neutrino.dec, neutrino.sigma)
         nu = HealPixSkymap(nu.s, uniq=nu.u).rasterize(pad=0., as_skymap=True)
         nuskymap.pixels += (nu.pixels*pix_area).to(u.dimensionless_unscaled).value*a.pixels*Aeff_skymap(neutrino.epsilon, gw_skymap).pixels
+        print(f"nuskymap multiplied with Aeff, allsky integral: {nuskymap.pixels.sum()}")
 
     prob_dens = gw_skymap.pixels*nuskymap.pixels
     prob_map = (prob_dens*pix_area).to(u.dimensionless_unscaled).value*Pfar(far)
+    print(f"False alarm probability: {Pfar(far)}")
     
     allsky_integral = prob_map.sum()
+    print(f"Last stage all sky integral of combined skymap: {allsky_integral}")
     denominator = (search_params.tgwplus - search_params.tgwminus) * (search_params.tnuplus - search_params.tnuminus)
-
     return allsky_integral/denominator
     
 def SLwogw(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns")):
@@ -182,11 +187,13 @@ def TS(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns"
         return 0.
     
     nominator = signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params)*Phgwnu()
-    denominator = (SLwogw(tgw, gw_skymap, far, neutrino_list, search_params)*Ph0nu() +
-    SLwonu(tgw, gw_skymap, far, neutrino_list, search_params)*Phgw0() + 
-    null_likelihood(far, neutrino_list, search_params)*Ph00())
-    print(f"signal likelihood: {nominator}, denominator: {denominator}")
+    wogw = SLwogw(tgw, gw_skymap, far, neutrino_list, search_params)*Ph0nu()
+    wonu = SLwonu(tgw, gw_skymap, far, neutrino_list, search_params)*Phgw0()
+    null = null_likelihood(far, neutrino_list, search_params)*Ph00()
+    denominator = (wogw + wonu + null)
+    print(f"signal likelihood: {nominator:.3g}, denominator: {denominator:.3g}: SLwogw:{wogw:.3g} {wonu:.3g} {null:.3g}")
     return nominator/denominator
 
 def p_value(test_statistic, null_statistics):
-    return float(1 - null_statistics.searchsorted(test_statistic) / len(null_statistics)) 
+    return float(len(null_statistics[null_statistics >= test_statistic]) / len(null_statistics)) 
+    # return float(1.0 - null_statistics.searchsorted(test_statistic) / len(null_statistics)) 

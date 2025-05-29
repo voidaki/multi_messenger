@@ -5,10 +5,11 @@ from astropy.time import Time
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import bisect
+import sys
 
 from coincidence_sig import *
 
-EMP_NU = np.load("/home/aki/snakepit/multi_messenger_astro/data/neutrino_data/emprical_neutrinos.npy") # each element is np.array(epsilon, ra, dec, sigma)
+EMP_NU = np.load("/home/aki/snakepit/multi_messenger_astro/data/neutrino_data/emprical_neutrinos.npy") # each element is np.array(epsilon (log10(e/GeV)), ra, dec, sigma)
 
 LVK_skymap_folders = [Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4a"),
                       Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4b"),
@@ -43,7 +44,7 @@ def random_gw_event():
     far = np.load(far_path)
     tgw = np.random.uniform(start_gps, end_gps)
     gw_skymap = HealPixSkymap.load_locally(gw_skymap_path, burst=burst, title=graceid)
-    return tgw, float(far), gw_skymap
+    return tgw, float(far), gw_skymap, burst
 
 def random_nu_event():
     nu = random.choice(EMP_NU)
@@ -61,22 +62,28 @@ def generate_null_statistics(Nevents,index):
     count = 0
 
     while count < 80:
-        tgw, far, gw_skymap = random_gw_event()
+        tgw, far, gw_skymap, burst = random_gw_event()
+        if burst:
+            print("Gravitational wave was burst event so it was skipped!")
+            print(">----------------------------------------------------<\n")
+            continue
         skymap = gw_skymap.rasterize(as_skymap=True)
         
         left = bisect.bisect_left(gps_list, tgw + search_params.tnuminus)
         right = bisect.bisect_right(gps_list, tgw + search_params.tnuplus)
 
         neutrino_list = random_generated_neutrinos[left:right]
-        # print(f"tgw: {tgw}, far: {far}, skymap nside: {skymap.nside}, Nnu: {len(neutrino_list)}")
+        print(f"tgw: {tgw}, far: {far:.3g}, skymap nside: {skymap.nside}, Nnu: {len(neutrino_list)}")
         if len(neutrino_list) == 0:
             test_statistic = 0.
         else:
             test_statistic = TS(tgw, skymap, far, neutrino_list)
-        print("test staticstic: ", test_statistic)
-            # if test_statistic > 1e-25:
-            #     skymap.plot(neutrino_list)
-            #     plt.show()
+        print(f"test staticstic with {len(neutrino_list)} neutrinos: {test_statistic:.3g}")
+        print(">--------------------------------------------------------------------------<\n")
+    
+        # if test_statistic > 0.5e-21:
+        #     skymap.plot(neutrino_list)
+        #     plt.show()
         
         count += 1
         null_stat.append(test_statistic)
@@ -85,13 +92,13 @@ def generate_null_statistics(Nevents,index):
 
 import os
 
-for i in range(184, 500):
-    filename = f"null_stat{i}.npy"
+for i in range(0, 500):
+    filename = f"./noncwb/null_stat{i}.npy"
     
     if os.path.exists(filename):
         print(f"{filename} exists, skipping.")
         continue
 
-    null_stat = generate_null_statistics(80000,i,)
+    null_stat = generate_null_statistics(110450,i)
     np.save(filename, null_stat)
     print(f"{i}th null_statics was generated and saved!")

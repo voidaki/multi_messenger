@@ -31,3 +31,21 @@ def Paeffe_plot():
     plt.title("Energy and sky location distribution from IceCube's Effective Area")
 
     plt.show()
+
+def Pgw_bns_r(r):
+    """
+    Returns the probability distribution of distance using the O3 Sensitiity Measurements
+    dataset. Only including the events with false alarm rate below 2 per day since LVK only 
+    gets the measurements of them.
+    """
+    import matplotlib.pyplot as plt
+    subthreshold_events = np.logical_or((far_gstlal <= 2), (far_mbta <= 2), (far_pycbc_hyperbank <= 2))
+    
+    distance_filtered = distance_source[subthreshold_events]
+    plt.hist(distance_filtered, bins=30, color='darkorchid', edgecolor='black')
+    plt.title("Prior Distance Distribution of Binary Neutron Star Mergers")
+    plt.xlabel("Distance (Mpc)")
+    plt.ylabel("Frequency")
+    plt.show()
+
+Pgw_bns_r(10)

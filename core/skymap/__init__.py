@@ -103,7 +103,6 @@ class HealPixSkymap():
                 uniq = np.array(skymap["UNIQ"])
             return HealPixSkymap(pixels, uniq=uniq, moc=moc, title=title)
 
-
     def nside2npix(self):
         return 12 * self.nside**2
 
@@ -111,7 +110,7 @@ class HealPixSkymap():
         import healpy as hp
         import numpy as np
         ra, dec = hp.pix2ang(self.nside, self.ipix,
-                          nest=self.nest, lonlat=True)
+                          nest=True, lonlat=True)
 
         return np.array(ra), np.array(dec)
     
@@ -166,9 +165,38 @@ class HealPixSkymap():
         prob_map = prob_map.to(u.dimensionless_unscaled).value
         return prob_map.sum()
     
-    def distance_gaussian(self, r):
+    def distance_gaussian(self, dec, r):
         from scipy.stats import norm
-        return self.distnorm*norm.pdf(r, loc=self.distmu, scale=self.distsigma)
+        import numpy as np
+        import astropy.units as u
+        import healpy as hp
+        ra = hp.pix2ang(self.nside, np.arange(hp.nside2npix(self.nside)), nest=True, lonlat=True)[0]
+        ipix = hp.ang2pix(self.nside, ra, dec, nest=True, lonlat=True)
+        distribution = self.distnorm*norm.pdf(r, loc=self.distmu, scale=self.distsigma)[ipix]
+        distribution = distribution[distribution < 1.0*u.Mpc**-2]
+        return (np.mean(distribution)).to_value(u.Mpc**-2)
+    
+    def distance_gaussian_average(self, r):
+        import numpy as np
+        from scipy.stats import norm
+        import astropy.units as u
+
+        distribution = self.distnorm*norm.pdf(r, loc=self.distmu, scale=self.distsigma)
+        distribution = distribution[distribution < 1.0*u.Mpc**-2]
+        return (np.mean(distribution)*u.Mpc**2).to(u.dimensionless_unscaled).value
+    
+    def distance_pdf_mean(self, r):
+        from scipy.stats import norm
+        import astropy.units as u
+        import numpy as np
+
+
+    def distance_pdf(self, ra, dec, r):
+        from scipy.stats import norm
+        import healpy as hp
+        import astropy.units as u
+        ipix = hp.ang2pix(self.nside, ra, dec, nest=True, lonlat=True)
+        return (self.distnorm[ipix]*norm.pdf(r, loc=self.distmu[ipix], scale=self.distsigma[ipix])).to_value(u.Mpc**-2)
 
     # def skymap_integral(gwskymap, neutrino_list):
     #     import healpy as hp
@@ -298,18 +326,19 @@ def emptyskymap(val, skymap):
 def Aeff_skymap(epsilon, skymap=None):
     import numpy as np
     from pathlib import Path
+    import astropy.units as u
     from utils import epsilon_dict
 
     for i in range(41):
-        if np.log10(epsilon) >= epsilon_dict()[i]:
-            epsilon_index = i
+        if np.log10(epsilon) >= epsilon_dict()[40-i]:
+            epsilon_index = 40-i
             break
         else:
-            epsilon_index = 40
+            epsilon_index = 0
     aeff_filepath = Path("/home/aki/snakepit/multi_messenger_astro/data/neutrino_data/aeff_skymaps") / f"effective_area{epsilon_index}.npy"
     s = np.load(aeff_filepath)
-    
-    aeff_skymap = HealPixSkymap(s*epsilon**-2, moc=False)
+    normalization= HealPixSkymap(s*epsilon**-2*u.sr**-1, moc=False).allsky_integral()
+    aeff_skymap = HealPixSkymap(s*epsilon**-2/normalization, moc=False)
     
     if skymap is not None:
         if aeff_skymap.nside == skymap.nside:

@@ -112,12 +112,14 @@ def Pfar(far):
     Parameters
     ----------
     far: False alarm rate (Hz)"""
+    if far > 2.3e-5:
+        far = 2.3e-5
     far_gstlal_filtered = far_gstlal[far_gstlal <= 2]
     far_mbta_filtered = far_mbta[far_mbta <= 2]
     far_pycbc_hyperbank_filtered = far_pycbc_hyperbank[far_pycbc_hyperbank <= 2]
     far_total = np.concatenate(
         (far_gstlal_filtered, far_mbta_filtered, far_pycbc_hyperbank_filtered)
-    )*86400  # All false alarm rates that are less than 2 per day
+    )/86400  # All false alarm rates that are less than 2 per day
     bins = np.logspace(-52, np.log10(2.3e-5), num=(52-5)+1)
 
     counts, bin_edges = np.histogram(far_total, bins=bins, density=True)
@@ -132,6 +134,24 @@ def Pfar(far):
 
     return probabilities[bin_i] if 0 <= bin_i < len(probabilities) else 0 
 
+def Pgw_bns_r(r):
+    """
+    Returns the prior probability distribution of distance using the O3 Sensitiity Measurements
+    dataset. Only including the events with false alarm rate below 2 per day since LVK only 
+    gets the measurements of them.
+    """
+    subthreshold_events = np.logical_or((far_gstlal <= 2), (far_mbta <= 2), (far_pycbc_hyperbank <= 2))
+    
+    distance_filtered = distance_source[subthreshold_events]
+    
+    counts, bin_edges = np.histogram(distance_filtered, bins=30, density=True)
+
+    bin_widths = np.diff(bin_edges)
+    probabilities = counts * bin_widths
+    
+    bin_i = np.digitize(r, bin_edges) - 1
+    
+    return probabilities[bin_i]
 
 # def Aeff(epsilon, declination, dataframes_effectiveArea):
 #     """Returns the corresponding effective area of the neurino detection with 
@@ -148,10 +168,11 @@ def Pfar(far):
 #     return A_eff
 
 def angle_dict():
-    return [0.0, 2.29, 4.59, 6.89, 9.21,
-            11.54, 13.89, 16.26, 18.66, 21.10,
-            23.58, 26.10, 28.69, 31.33, 34.06,
-            36.87, 39.79, 42.84, 46.05, 49.46,
+    return [-90.00, -73.74, -66.93, -61.64, -57.14, -53.13, -49.46, -46.05, -42.84,
+            -39.79, -36.87, -34.06, -31.33, -28.69, -26.10, -23.58, -21.10, -18.66,
+            -16.26, -13.89, -11.54, -9.21, -6.89, -4.59, -2.29,
+            0.0, 2.29, 4.59, 6.89, 9.21, 11.54, 13.89, 16.26, 18.66, 21.10,
+            23.58, 26.10, 28.69, 31.33, 34.06, 36.87, 39.79, 42.84, 46.05, 49.46,
             53.13, 57.14, 61.64, 66.93, 73.74, 90.00]
 
 def epsilon_dict():
@@ -161,6 +182,42 @@ def epsilon_dict():
             6.2, 6.4, 6.6, 6.8, 7.0, 7.2, 7.4,
             7.6, 7.8, 8.0, 8.2, 8.4, 8.6, 8.8,
             9.0, 9.2, 9.4, 9.6, 9.8, 10.0] # log10(epsilon/GeV)
+
+# def Aeff(epsilon, declination, search_params):
+#     """Returns the corresponding effective area of the neurino detection with 
+#     respect to the individual energy of detected neturino in log10 scale and 
+#     declination angle.
+     
+#     Parameters
+#     ----------
+#     epsilon: float
+#         Reconstructed energy of the neutrino
+#     declination: float
+#         Declination angle of the neutrino observation
+#     """
+#     if epsilon >= 100.0:
+#         epsilon = np.log10(epsilon)
+#     # Clipping neutrino energy inside the bounds
+#     epsilon = np.clip(epsilon, np.log10(search_params.epsilonmin), np.log10(search_params.epsilonmax))
+    
+#     declination = np.clip(declination, -90.0, 90.0)
+
+#     df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
+
+#     dec_angles = np.array(angle_dict())
+#     dec = abs(declination)
+#     dec_index = np.sum(dec_angles < dec) - 1
+#     epsilon_index = int((epsilon - 2.0)/0.2)
+ 
+#     if declination < 0:
+#         row = df[(df['log10(E_nu/GeV)_min'] == epsilon_dict()[epsilon_index]) & (df['Dec_nu_min[deg]'] == -dec_angles[dec_index])]
+#     else:
+#         row = df[(df['log10(E_nu/GeV)_min'] == epsilon_dict()[epsilon_index]) & (df['Dec_nu_min[deg]'] == dec_angles[dec_index])]
+
+#     if not row.empty:
+#         return row.iloc[0]['A_Eff[cm^2]']
+#     else:
+#         return 0.
 
 def Aeff(epsilon, declination, search_params):
     """Returns the corresponding effective area of the neurino detection with 
@@ -176,38 +233,108 @@ def Aeff(epsilon, declination, search_params):
     """
     if epsilon >= 100.0:
         epsilon = np.log10(epsilon)
-    # Clipping neutrino energy inside the bounds
-    if epsilon < np.log10(search_params.epsilonmin):
-        epsilon = np.log10(search_params.epsilonmin)
-    if epsilon > np.log10(search_params.epsilonmax):
-        epsilon = np.log10(search_params.epsilonmax)
+
+    # epsilon = np.clip(epsilon, np.log10(search_params.epsilonmin), np.log10(search_params.epsilonmax))
     
-    if declination < -90.0:
-        declination = -90.0
-    if declination > 90.0:
-        declination = 90.0
+    declination = np.clip(declination, -90.0, 89.9)
 
     df = nu_data["effective_areas"]["IC86_II_effectiveArea"]
 
-    dec_angles = np.array(angle_dict())
-    dec = abs(declination)
-    dec_index = np.sum(dec_angles < dec) - 1
-    epsilon_index = int((epsilon - 2.0)/0.2)
- 
-    if declination < 0:
-        row = df[(df['log10(E_nu/GeV)_min'] == epsilon_dict()[epsilon_index]) & (df['Dec_nu_min[deg]'] == -dec_angles[dec_index])]
-    else:
-        row = df[(df['log10(E_nu/GeV)_min'] == epsilon_dict()[epsilon_index]) & (df['Dec_nu_min[deg]'] == dec_angles[dec_index])]
+    epsilon_index = np.searchsorted(epsilon_dict(), epsilon, side='right') - 1
+    dec_index = np.searchsorted(angle_dict(), declination, side='right') - 1
+    
+
+    row = df[(df['log10(E_nu/GeV)_min'] == np.array(epsilon_dict())[epsilon_index]) & (df['Dec_nu_min[deg]'] == np.array(angle_dict())[dec_index])]
 
     if not row.empty:
         return row.iloc[0]['A_Eff[cm^2]']
     else:
+        # print(f"Encountered error, indexes are out of bounds! {epsilon_index}, {dec_index}",epsilon, declination)
         return 0.
 
+def expnu_dec(dec, search_params):
+    epsilon_bins = np.array(epsilon_dict()) 
+    epsilon_vals = 10**((epsilon_bins[:-1] + epsilon_bins[1:]) / 2) 
+    delta_eps = 10**epsilon_bins[1:] - 10**epsilon_bins[:-1]
+
+    aeff_vals = np.array([Aeff(eps, dec, search_params) for eps in epsilon_vals])
+    integrand_vals = aeff_vals * epsilon_vals**-2
+
+    integral = np.sum(integrand_vals * delta_eps)
+    return integral
 
 def expnu_new(r, Enu, dec, search_params):
+    """
+    Expected count of neutrinos for given parameters.
+
+    Parameters:
+    -----------
+    r: float
+        Distance in Mpc units
+    Enu: float
+        Total energy of the emitted neutrinos by an astrophysical source, in erg units
+    dec: float
+        Declination angle in degrees
+    search_params: IceCubeLIGO object
+        Constant parameters used in this search
     
-    return 1.
+    Returns:
+    --------
+    Expected number of neutrinos to detect, in float
+    """
+    Mpc_to_cm = 3.085677581e24
+    erg_to_GeV = 624.1509074
+
+    Enu = Enu*erg_to_GeV
+    r = r*Mpc_to_cm
+
+    epsilon_bins = np.array(epsilon_dict()) 
+    epsilon_vals = 10**((epsilon_bins[:-1] + epsilon_bins[1:]) / 2)
+    delta_eps = 10**epsilon_bins[1:] - 10**epsilon_bins[:-1]
+    Aeff_vals = [Aeff(epsilon, dec, search_params)*epsilon**-2 for epsilon in epsilon_vals ]
+
+    energy_norm = 13.8 # ln(epsilonmax/epsilonmin)
+
+    int_vals = Aeff_vals*delta_eps*Enu/(4.0*np.pi)/energy_norm*r**-2
+
+    return np.sum(int_vals)
+
+
+def PNnu(gw_skymap, Nnu, search_params):
+    from scipy.stats import poisson
+
+    Mpc_to_cm = 3.085677581e24
+    erg_to_GeV = 624.1509074
+    mu_fraction = 1.0/3.0
+    Enu = 10.**49
+
+    filepath = "/home/aki/snakepit/multi_messenger_astro/core/expnu_dec.npy"
+    data =  np.load(filepath, allow_pickle=True).item()
+    dec_bins = data["dec_bins"]
+    integral_vals = data["integrals"]
+
+    def expnu_dec(dec_array):
+        flat_dec = dec_array.flatten()
+        idxs = [np.abs(dec_bins - d).argmin() for d in flat_dec]
+        result = np.array([integral_vals[i] for i in idxs])
+        return result.reshape(dec_array.shape)
+    
+    dec_vals = np.array((dec_bins[:-1] + dec_bins[1:]) / 2)
+    delta_dec = (dec_bins[1:] - dec_bins[:-1])[0]
+
+    r_vals = np.linspace(1.0, 700., 500)
+    delta_r = float((700.0-1.0)/500)
+
+    def inner(r, dec):
+        return Enu*erg_to_GeV*search_params.fb*mu_fraction/(4*np.pi*np.log(search_params.epsilonmax/search_params.epsilonmin))*Mpc_to_cm**-2*r**-2*expnu_dec(dec)
+    def integrant(dec, r):
+        return poisson.pmf(Nnu, inner(r, dec))
+
+    dec_grid, r_grid = np.meshgrid(dec_vals, r_vals, indexing='ij')
+    integral_vals = integrant(dec_grid, r_grid)
+    total = np.sum(integral_vals)*delta_dec*delta_r
+    return total
+
 
 def expnu(r, Enu,  search_params):
     """Count of expected neutrinos."""
@@ -302,7 +429,7 @@ def search_parameters(population):
         Mgwmin = 1.0*1.988*10**30, # 1.0 Solar Masses in Kgs for bns
         Enumax = 10**51, # erg
         Enumin = 10**46, # erg
-        epsilonmax = 10.0**10, # GeV
+        epsilonmax = 10.0**8, # GeV
         epsilonmin = 10.0**2, # GeV
         farthr = 2.3*10**-5, # Hz
         population=population
