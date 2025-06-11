@@ -252,6 +252,7 @@ def Aeff(epsilon, declination, search_params):
         # print(f"Encountered error, indexes are out of bounds! {epsilon_index}, {dec_index}",epsilon, declination)
         return 0.
 
+
 def expnu_dec(dec, search_params):
     epsilon_bins = np.array(epsilon_dict()) 
     epsilon_vals = 10**((epsilon_bins[:-1] + epsilon_bins[1:]) / 2) 
@@ -262,6 +263,7 @@ def expnu_dec(dec, search_params):
 
     integral = np.sum(integrand_vals * delta_eps)
     return integral
+
 
 def expnu_new(r, Enu, dec, search_params):
     """
@@ -414,21 +416,21 @@ def search_parameters(population):
     population: "bbh", "bns", or "nsbh"
     """
     return IceCubeLIGO(
-        nu_51_100 = 2.12,
+        nu_51_100 = 1.18,
         tgwplus = 250., # s
         tgwminus = -250., # s
         tnuplus = 250., # s
         tnuminus = -250., # s
         fb = 10.0, 
-        ratebggw = 5.0*2.3*10**-5, # 1/s, 2 per day per pipeline (gstlal, mbta)
+        ratebggw = 5.0*2.3*10**-5, # 1/s, 2 per day per pipeline (gstlal, mbta, pycbc, spiir, cwb_allsky)
         ratebgnu = 0.0035055081034729364, # Background neurino rate, per second (1/s)
         ndotgw = 3.9255868248144146*3.16*10**-8, # per second
         ndotnu = 2.7402641832764836e-05*3.16*10**-8, # per second
         ndotgwnu = 2.7402641832764836e-05*3.16*10**-8/2.0, #FIXME currently ndotnu/2
         Mgwmax = 2.5*1.988*10**30, # 2.5 Solar Masses in Kgs for bns
         Mgwmin = 1.0*1.988*10**30, # 1.0 Solar Masses in Kgs for bns
-        Enumax = 10**51, # erg
-        Enumin = 10**46, # erg
+        Enumax = 10.0**51, # erg
+        Enumin = 10.0**46, # erg
         epsilonmax = 10.0**8, # GeV
         epsilonmin = 10.0**2, # GeV
         farthr = 2.3*10**-5, # Hz

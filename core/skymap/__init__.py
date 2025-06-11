@@ -165,16 +165,6 @@ class HealPixSkymap():
         prob_map = prob_map.to(u.dimensionless_unscaled).value
         return prob_map.sum()
     
-    def distance_gaussian(self, dec, r):
-        from scipy.stats import norm
-        import numpy as np
-        import astropy.units as u
-        import healpy as hp
-        ra = hp.pix2ang(self.nside, np.arange(hp.nside2npix(self.nside)), nest=True, lonlat=True)[0]
-        ipix = hp.ang2pix(self.nside, ra, dec, nest=True, lonlat=True)
-        distribution = self.distnorm*norm.pdf(r, loc=self.distmu, scale=self.distsigma)[ipix]
-        distribution = distribution[distribution < 1.0*u.Mpc**-2]
-        return (np.mean(distribution)).to_value(u.Mpc**-2)
     
     def distance_gaussian_average(self, r):
         import numpy as np
@@ -184,14 +174,13 @@ class HealPixSkymap():
         distribution = self.distnorm*norm.pdf(r, loc=self.distmu, scale=self.distsigma)
         distribution = distribution[distribution < 1.0*u.Mpc**-2]
         return (np.mean(distribution)*u.Mpc**2).to(u.dimensionless_unscaled).value
-    
-    def distance_pdf_mean(self, r):
-        from scipy.stats import norm
-        import astropy.units as u
-        import numpy as np
 
 
     def distance_pdf(self, ra, dec, r):
+        """
+        Returns the normal distribution of the distance from the gravitational wave
+        skymap to 
+        """
         from scipy.stats import norm
         import healpy as hp
         import astropy.units as u
@@ -258,7 +247,8 @@ class HealPixSkymap():
                 data = {'IPIX': self.ipix, 'PIXELS': self.pixels}
         return QTable(data)
 
-    def plot(self, neutrino_list=None): #FIXME add title
+    def plot(self, neutrino_list=None):
+        import matplotlib.pyplot as plt
         if neutrino_list is None:
             from hpmoc import plot
             if self.moc:
@@ -272,6 +262,7 @@ class HealPixSkymap():
             points = [(neutrino.ra, neutrino.dec, neutrino.sigma) for neutrino in neutrino_list]
             neutrino_points = PointsTuple(points, label=(f"neutrino {i}" for i in range(len(neutrino_list))))
             mollview(self.pixels, neutrino_points, rot=(180.0, 0., 0.), title=self.title)
+        plt.show()
 
 # class HealPixSkyMap():
 #     def __init__(self, skymap, moc=True, nest=True):

@@ -129,7 +129,7 @@ def ndotgw(search_params=search_parameters("bns")):
     
     prob = 0
     integral = 0
-    ndotgw_true = 1000 # Gpc^-3 * y^-1
+    ndotgw_true = 1000 # Gpc^-3 * y^-1 for bns
     T_obs = search_params.tgwplus - search_params.tgwminus
     for i in tqdm(range(len(gpstime_filtered)), desc="computing integral"):
         prob += temporal(T_obs)*Pr(distance_filtered[i], search_params)*sky_dist()*PMgw(mass1_filtered[i], mass2_filtered[i], search_params)
@@ -306,7 +306,7 @@ from astropy.time import Time
 
 # # print(nu_skymap.to_table())
 
-from coincidence_sig import TS, p_value
+from coincidence_sig import TS, p_value, test_statistic
 from data_loading import retrieve_event
 
 # # cwb_skymap = retrieve_event("S250201al")[0]
@@ -401,10 +401,10 @@ def PNnu(gw_skymap, Nnu, search_params=search_params):
 
 from utils import expnu_new, Aeff
 decvals = np.linspace(-90., 90., 180)
-ddec = (decvals[1:] - decvals[:-1])[0]
-expnus = [expnu_new(100., 1.e51, dec, search_params) for dec in decvals]
+ddec = np.deg2rad(decvals[1] - decvals[0]) 
+expnus = [expnu_new(100., 1.e51, dec, search_params)*np.cos(np.deg2rad(dec)) for dec in decvals]
 
-print(np.sum(expnus)/len(expnus))
+print(np.sum(expnus)*ddec/2)
 plt.plot(decvals, expnus)
 plt.show()
 
@@ -427,7 +427,7 @@ print("Null statistics plotting, p-value testing")
 print(">-----------------------------------------<")
 
 directory = '/home/aki/snakepit/multi_messenger_astro/core/noncwb'
-teststat_dir = '/home/aki/snakepit/multi_messenger_astro/core/teststat'
+teststat_dir = '/home/aki/snakepit/multi_messenger_astro/core/testnoncwb'
 
 file_list = sorted(glob.glob(os.path.join(directory, '*.npy')))
 test_files = sorted(glob.glob(os.path.join(directory, '*.npy')))
@@ -462,14 +462,14 @@ p_values = np.array([p_value(test_stat, all_null_stats) for test_stat in all_tes
 bins = np.logspace(-40, -18, 50)
 
 plt.figure(figsize=(8, 5))
-plt.hist(null_stats_clipped, bins=bins, color='goldenrod', edgecolor='black')
-# plt.hist(p_values, bins=20, color='red', edgecolor='black')
-plt.xlabel(r'$-\log_{10}$(test statistic)')
+# plt.hist(null_stats_clipped, bins=bins, color='goldenrod', edgecolor='black')
+plt.hist(p_values, bins=20, color='red', edgecolor='black')
+# plt.xlabel("Test Statistic")
 plt.ylabel('Frequency')
-plt.xscale('log')
-# plt.title('Distribution of Null Test Statistics')
-# plt.xlabel('p-value')
+# plt.xscale('log')
+plt.title('Distribution of p-values for random events')
+plt.xlabel('p-value')
 plt.ylabel('Frequency')
-plt.title('Distribution of null statistics')
+# plt.title('Distribution of Null Statistics')
 plt.grid(True)
 plt.show()

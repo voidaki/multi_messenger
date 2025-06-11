@@ -43,7 +43,7 @@ def random_gw_event():
     far_path = false_alarm_rate_path / (graceid + "_far.npy")
     far = np.load(far_path)
     tgw = np.random.uniform(start_gps, end_gps)
-    gw_skymap = HealPixSkymap.load_locally(gw_skymap_path, burst=burst, title=graceid)
+    gw_skymap = HealPixSkymap.load_locally(gw_skymap_path, burst=burst, title=f"{graceid} Gravitational Wave Skymap with Neutrino Coincidences")
     return tgw, float(far), gw_skymap, burst
 
 def random_nu_event():
@@ -82,8 +82,8 @@ def generate_null_statistics(Nevents,index):
         print(">--------------------------------------------------------------------------<\n")
     
         # if test_statistic > 0.5e-21:
-        #     skymap.plot(neutrino_list)
-        #     plt.show()
+        #      skymap.plot(neutrino_list)
+        #      plt.show()
         
         count += 1
         null_stat.append(test_statistic)
