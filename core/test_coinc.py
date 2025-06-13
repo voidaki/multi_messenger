@@ -22,6 +22,7 @@ from skymap import (
     emptyskymap,
     Aeff_skymap
 )
+
 from likelihood import Pempe
 
 def Pthetagw(r, M1, M2):
@@ -54,7 +55,9 @@ def Phgwnu(search_params=search_parameters("bns")):
     return search_params.ndotgwnu
 
 
-def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns")): # FIXME add cbc check, if the superevent is burst or not
+def signal_likelihood(tgw: float, gw_skymap: HealPixSkymap, far: float, 
+                      neutrino_list: List[IceCubeNeutrino], 
+                      search_params: IceCubeLIGO, cwb: bool = False): # FIXME add cbc check, if the superevent is burst or not
     """Returns the signal likelihood in eq (3) 
     
     Parameters
@@ -68,9 +71,10 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
     neutrino_list: list
         List of all neutrinos in the time frame, as IceCubeNeutrino instance
     search_params: Collection of constant search parameters for this model.
-    cbc: bool
-        Whether this is a CBC (compact binary coalescence) group trigger or a
-        burst trigger. True for cbc group, false for unmodeled searches.
+    cwb: bool
+        Whether this is a CWB (Coherent WaveBurst) pipeline trigger 
+        True for cwb group, false for other pipelines. CWB does not have
+        distance information in the gravitational wave skymap.
 
     Returns
     -------
@@ -86,8 +90,8 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
         return 0.
     
     pix_area = gw_skymap.nside2pixarea() # in u.sr
+    nuskymap = emptyskymap(0.0, gw_skymap)
     Nnu = len(neutrino_list)
-    nuskymaps = []
     Tobs = search_params.tgwplus - search_params.tgwminus
 
     def Pθ_Hs(Enu, r):
@@ -96,29 +100,23 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
                 poisson.pmf(1, search_params.ndotgwnu*Tobs)*poisson.pmf(0, (search_params.ndotgw - search_params.ndotgwnu)*Tobs)*
                 poisson.pmf(0, (search_params.ndotnu - search_params.ndotgwnu)*Tobs))
         return PEnu(Enu, search_params)*Pr(r, search_params)*sky_dist()*PHs_θ
-    
-    count = 0
-    indices = []
+
     for neutrino in neutrino_list:
-        a = t_overlap(tgw, neutrino.gps, search_params)*sky_dist()*nquad(Pθ_Hs, [(search_params.Enumin, search_params.Enumax), (0, 700.0)])[0]
+        a = emptyskymap(t_overlap(tgw, neutrino.gps, search_params)*sky_dist()*nquad(Pθ_Hs, [(search_params.Enumin, search_params.Enumax), 
+                                                                                               (0, 700.0)])[0], gw_skymap)
+        print(f"Neutrino parameters, energy:{neutrino.epsilon}, ra, dec =({neutrino.ra},{neutrino.dec})")
+        print(f"constant skymap a: {a.pixels[0]}, time overlap: {t_overlap(tgw, neutrino.gps, search_params)}")
         nu = gw_skymap.neutrinoskymap(neutrino.ra, neutrino.dec, neutrino.sigma)
         nu = HealPixSkymap(nu.s, uniq=nu.u).rasterize(pad=0., as_skymap=True)
-        nonzero_indices = nu.ipix[nu.pixels != 0.]
-        indices.append(nonzero_indices)
-        nu_reduced = nu.reduce(nonzero_indices)
-        nuskymap = emptyskymap(0.0, gw_skymap).reduce(nonzero_indices)
-        aeff_skymap = Aeff_skymap(neutrino.epsilon, gw_skymap).reduce(nonzero_indices)
-        nuskymap.pixels += (nu_reduced.pixels*pix_area).to(u.dimensionless_unscaled).value*a*aeff_skymap.pixels
-        nuskymaps.append(nuskymap)
-        count += 1
+        nuskymap.pixels += (nu.pixels*pix_area).to(u.dimensionless_unscaled).value*a.pixels*Aeff_skymap(neutrino.epsilon, gw_skymap).pixels
+        print(f"nuskymap multiplied with Aeff, allsky integral: {nuskymap.pixels.sum()}")
+
+    prob_dens = gw_skymap.pixels*nuskymap.pixels
+    prob_map = (prob_dens*pix_area).to(u.dimensionless_unscaled).value*Pfar(far)
+    print(f"False alarm probability: {Pfar(far)}")
     
-    allsky_integral = 0.0
-    for i, nuskymap in enumerate(nuskymaps):
-        gw_reduced = gw_skymap.reduce(indices[i])
-        prob_dens = gw_reduced.pixels*nuskymap.pixels
-        prob_map = (prob_dens*pix_area).to(u.dimensionless_unscaled).value
-        allsky_integral += prob_map.sum()*Pfar(far)
-        
+    allsky_integral = prob_map.sum()
+    print(f"Last stage all sky integral of combined skymap: {allsky_integral}")
     denominator = (search_params.tgwplus - search_params.tgwminus) * (search_params.tnuplus - search_params.tnuminus)
     return allsky_integral/denominator
     
@@ -201,7 +199,7 @@ def TS(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns"
     return nominator/denominator
 
 
-def p_value(test_statistic: float, null_statistics: float) -> float:
+def p_value(test_statistic: float, null_statistics: float):
     return float(len(null_statistics[null_statistics >= test_statistic]) / len(null_statistics))
 
 
@@ -262,12 +260,13 @@ def test_statistic(tgw: float, gw_skymap: HealPixSkymap, far: float,
     """
     import glob, os
     import numpy as np
-    
+
     nullstats_directory = '/home/aki/snakepit/multi_messenger_astro/core/noncwb'
     nullstats_files = sorted(glob.glob(os.path.join(nullstats_directory, '*.npy')))
 
+    # Load and concatenate
     null_stats = np.concatenate([np.load(f) for f in nullstats_files])
-    null_stats = null_stats[null_stats <= 1.0] # For filtering out the bad odds ratios in the generated dataset due to bugs
+    null_stats = null_stats[null_stats <= 1.0] # For filtering out the bad odds ratios in the generated dataset
 
     search_params = search_parameters("bns") # Search for binary neutron star, currently does not support other populations (bbh, nsbh)
 
@@ -288,27 +287,27 @@ def test_statistic(tgw: float, gw_skymap: HealPixSkymap, far: float,
     nu_info = {}
     for i, nu in enumerate(neutrino_list):
         json = {f"neutrino_{i+1}": {
-            'mjd': float(nu.mjd),
-            'gpstime': float(nu.gps),
-            'dt': float(tgw - nu.gps),
+            'mjd': nu.mjd,
+            'gpstime': nu.gpstime,
+            'dt': tgw - nu.gpstime,
             'right_ascension': nu.ra,
             'declination': nu.dec,
             'angular_uncertainty': nu.sigma,
-            'log10energy': float(np.log10(nu.epsilon))
+            'log10energy': np.log10(nu.epsilon)
             }
         }
         nu_info.update(json)
 
     results = {
-        'test_statistic': float(odds),
-        'signal_likelihood': float(P_Hs),
-        'coinc_likelihood_nu': float(P_H0nu),
-        'coinc_likelihood_gw': float(P_Hgw0),
-        'null_likelihood': float(P_Hn),
-        'p_value': float(pval),
+        'test_statistic': odds,
+        'signal_likelihood': P_Hs,
+        'coinc_likelihood_nu': P_H0nu,
+        'coinc_likelihood_gw': P_Hgw0,
+        'null_likelihood': P_Hn,
+        'p_value': pval,
         'gw_info': {
             'tgw': tgw,
-            'far': float(far),
+            'far': far,
             'skymap_nside': gw_skymap.nside,
             'cwb': cwb
         },

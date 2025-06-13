@@ -343,8 +343,28 @@ def gw_event():
     rvals = np.linspace(0.0, 23000, 1000)
     return TS(time_gps, skymap, far, neutrino_list)
 
-# test_stat = gw_event()
-# print(test_stat)
+
+gw_skymap_path = Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4a/S230920al_Bilby.multiorder.fits")
+skymap = HealPixSkymap.load_locally(gw_skymap_path, burst=False).rasterize(as_skymap=True)
+print(skymap.nside)
+graceid = gw_skymap_path.name.split('_')[0]
+neutrino_list = [IceCubeNeutrino(time_mjd, 240.0, -15.0, 1.2, 10**4.5), IceCubeNeutrino(time_mjd, 260.0, -17.0, 1.5, 10**4.5)]
+far_path = false_alarm_rate_path / (graceid + "_far.npy")
+far = np.load(far_path)
+from coincidence_sig import signal_likelihood
+import time
+
+start_time = time.time()
+sl_unoptimized = signal_likelihood(time_gps, skymap, far, neutrino_list)
+unoptimized_time = time.time()
+print(f"signal without the optimization: {sl_unoptimized}, time it took: {unoptimized_time - start_time}")
+
+from coincidence_sig_v2 import signal_likelihood
+
+new_time = time.time()
+sl_optimized = signal_likelihood(time_gps, skymap, far, neutrino_list)
+optimized_time = time.time()
+print(f"signal with the optimization: {sl_unoptimized}, time it took: {optimized_time - new_time}")
 
 import glob, os
 

@@ -151,6 +151,15 @@ class HealPixSkymap():
         if as_skymap:
             return HealPixSkymap(nested_skymap, self.distmu, self.distsigma, self.distnorm, uniq=self.ipix2uniq(),  moc=False, title=self.title)
         
+    def reduce(self, indices):
+        reduced_pixels = self.pixels[indices]
+        if self.distmu is not None:
+            reduced_distmu = self.distmu[indices]
+            reduced_distsigma = self.distsigma[indices]
+            reduced_distnorm = self.distnorm[indices]
+            return HealPixSkymap(reduced_pixels, reduced_distmu, reduced_distsigma, reduced_distnorm, uniq=indices, moc=True, title=self.title)
+        return HealPixSkymap(reduced_pixels, uniq=indices, moc=True, title=self.title)
+
     def nside2pixarea(self):
         """Returns area per pixel, in 1/steradian if steradian is True
         in 1/deg^2 if its set False."""
