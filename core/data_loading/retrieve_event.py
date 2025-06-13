@@ -1,3 +1,6 @@
+"""
+author:voidaki
+"""
 from ligo.gracedb.rest import GraceDb
 from astropy.table import QTable
 from astropy.utils.data import download_file

@@ -1,3 +1,6 @@
+"""
+author:voidaki
+"""
 import numpy as np
 from scipy.stats import norm
 import astropy.units as u

@@ -1,3 +1,6 @@
+"""
+author:voidaki
+"""
 import numpy as np
 from data_loading import load_gravitational_wave_data, load_neutrino_data
 from tqdm import tqdm

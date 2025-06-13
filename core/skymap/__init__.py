@@ -1,3 +1,6 @@
+"""
+author:voidaki
+"""
 class HealPixSkymap():
     def __init__(self, pixels, distmu=None, distsigma=None, distnorm=None, uniq=None, moc=True, nest=True, title=None):
         """

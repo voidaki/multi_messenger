@@ -1,3 +1,6 @@
+"""
+author:voidaki
+"""
 from gwpy.table import Table
 from pathlib import Path
 
