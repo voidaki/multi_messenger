@@ -129,7 +129,7 @@ def SLwogw(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("
     import astropy.units as u
     
     pix_area = gw_skymap.nside2pixarea() # in u.sr
-    nuskymap = emptyskymap(0.0, gw_skymap)
+    nuskymaps = []
     Nnu = len(neutrino_list)
     Tobs = search_params.tnuplus - search_params.tnuminus
 
@@ -141,13 +141,17 @@ def SLwogw(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("
         return PEnu(Enu, search_params)*Pr(r, search_params)*sky_dist()*PHgw0_θ
 
     for neutrino in neutrino_list:
-        a = emptyskymap(sky_dist()*nquad(Pθ_H0nu, [(search_params.Enumin, search_params.Enumax), 
-                                                    (0, 700.0)])[0], gw_skymap)
+        a = sky_dist()*nquad(Pθ_H0nu, [(search_params.Enumin, search_params.Enumax), (0, 700.0)])[0]
         nu = gw_skymap.neutrinoskymap(neutrino.ra, neutrino.dec, neutrino.sigma)
         nu = HealPixSkymap(nu.s, uniq=nu.u).rasterize(pad=0., as_skymap=True)
-        nuskymap.pixels += (nu.pixels*pix_area).to(u.dimensionless_unscaled).value*a.pixels*Aeff_skymap(neutrino.epsilon, gw_skymap).pixels    
+        nonzero_indices = nu.ipix[nu.pixels != 0.]
+        nu_reduced = nu.reduce(nonzero_indices)
+        nuskymap = emptyskymap(0.0, gw_skymap).reduce(nonzero_indices)
+        aeff_skymap = Aeff_skymap(neutrino.epsilon, gw_skymap).reduce(nonzero_indices)
+        nuskymap.pixels += (nu_reduced.pixels*pix_area).to(u.dimensionless_unscaled).value*a*aeff_skymap.pixels
+        nuskymaps.append(nuskymap)
 
-    allsky_integral = nuskymap.pixels.sum()*Pempfar(far)
+    allsky_integral = sum([nuskymap.pixels.sum() for nuskymap in nuskymaps])*Pempfar(far)
     denominator = search_params.tgwplus - search_params.tgwminus
 
     return allsky_integral/denominator
