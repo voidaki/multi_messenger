@@ -187,7 +187,7 @@ def TS(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns"
     return nominator/denominator
 
 
-def p_value(test_statistic: float, null_statistics: float):
+def p_value(test_statistic: float, null_statistics: float) -> float:
     return float(len(null_statistics[null_statistics >= test_statistic]) / len(null_statistics))
 
 
@@ -248,7 +248,7 @@ def test_statistic(tgw: float, gw_skymap: HealPixSkymap, far: float,
     """
     import glob, os
     import numpy as np
-
+    
     nullstats_directory = '/home/aki/snakepit/multi_messenger_astro/core/noncwb'
     nullstats_files = sorted(glob.glob(os.path.join(nullstats_directory, '*.npy')))
 
