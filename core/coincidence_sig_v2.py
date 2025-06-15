@@ -275,20 +275,40 @@ def test_statistic(tgw: float, gw_skymap: HealPixSkymap, far: float,
 
     search_params = search_parameters("bns") # Search for binary neutron star, currently does not support other populations (bbh, nsbh)
 
-    P_Hs = signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params)
-    P_H0nu = SLwogw(tgw, gw_skymap, far, neutrino_list, search_params)
-    P_Hgw0 = SLwonu(tgw, gw_skymap, far, neutrino_list, search_params)
-    P_Hn = null_likelihood(far, neutrino_list, search_params)
+    pvals = []
+    if not single_neutrino:
+        P_Hs = signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params)
+        P_H0nu = SLwogw(tgw, gw_skymap, far, neutrino_list, search_params)
+        P_Hgw0 = SLwonu(tgw, gw_skymap, far, neutrino_list, search_params)
+        P_Hn = null_likelihood(far, neutrino_list, search_params)
 
-    odds = (P_Hs*Phgwnu()) / ((P_H0nu*Ph0nu()) + (P_Hgw0*Phgw0()) + (P_Hn*Ph00()))
+        odds = (P_Hs*Phgwnu()) / ((P_H0nu*Ph0nu()) + (P_Hgw0*Phgw0()) + (P_Hn*Ph00()))
+        if odds >= 1.0:
+            print("Bad odds ratio.")
+            odds = 0.0
+            pval = p_value(odds, null_stats)
+        else:
+            pval = p_value(odds, null_stats)
+        pvals = [pval for _ in range(len(neutrino_list))]
 
-    if odds >= 1.0:
-        print("Bad odds ratio.")
-        odds = 0.0
-        pval = p_value(odds, null_stats)
-    else:
-        pval = p_value(odds, null_stats)
-
+    if single_neutrino:
+        for neutrino in neutrino_list:
+            single_nu = [neutrino]
+            P_Hs = signal_likelihood(tgw, gw_skymap, far, single_nu, search_params)
+            P_H0nu = SLwogw(tgw, gw_skymap, far, single_nu, search_params)
+            P_Hgw0 = SLwonu(tgw, gw_skymap, far, single_nu, search_params)
+            P_Hn = null_likelihood(far, single_nu, search_params)
+            
+            odds = (P_Hs*Phgwnu()) / ((P_H0nu*Ph0nu()) + (P_Hgw0*Phgw0()) + (P_Hn*Ph00()))
+            print(odds)
+            if odds >= 1.0:
+                print("Bad odds ratio.")
+                odds = 0.0
+                pval = p_value(odds, null_stats)
+            else:
+                pval = p_value(odds, null_stats)
+            pvals.append(pval)
+ 
     nu_info = {}
     for i, nu in enumerate(neutrino_list):
         json = {f"neutrino_{i+1}": {
@@ -298,7 +318,8 @@ def test_statistic(tgw: float, gw_skymap: HealPixSkymap, far: float,
             'right_ascension': nu.ra,
             'declination': nu.dec,
             'angular_uncertainty': nu.sigma,
-            'log10energy': float(np.log10(nu.epsilon))
+            'log10energy': float(np.log10(nu.epsilon)),
+            'p-value': float(pvals[i])
             }
         }
         nu_info.update(json)
