@@ -33,6 +33,7 @@ print("\n>-----------------------------------------------------------<\n")
 
 tgw = 1419135971.25
 gw_skymap = HealPixSkymap.load_locally(lvk_skymaps / "S241225c_Bilby.multiorder.fits").rasterize(as_skymap=True)
+print(gw_skymap.to_table())
 far = np.load(f"/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4_fars/S241225c_far.npy")
 nu_mjd1, nu_mjd2 = Time(tgw-238.24, format='gps').mjd, Time(tgw-24.51, format='gps').mjd
 neutrino_list = [IceCubeNeutrino(nu_mjd1, 235.45, -42.76, 0.43, 10**3.9), 

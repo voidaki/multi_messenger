@@ -284,7 +284,6 @@ def test_statistic(tgw: float, gw_skymap: HealPixSkymap, far: float,
 
         odds = (P_Hs*Phgwnu()) / ((P_H0nu*Ph0nu()) + (P_Hgw0*Phgw0()) + (P_Hn*Ph00()))
         if odds >= 1.0:
-            print("Bad odds ratio.")
             odds = 0.0
             pval = p_value(odds, null_stats)
         else:

@@ -1,0 +1,226 @@
+{'voe:VOEvent': {'@ivorn': 'ivo://gwnet/LVC#MS250923s-1-Preliminary',
+                 '@role': 'test',
+                 '@version': '2.0',
+                 '@xmlns:voe': 'http://www.ivoa.net/xml/VOEvent/v2.0',
+                 '@xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+                 '@xsi:schemaLocation': 'http://www.ivoa.net/xml/VOEvent/v2.0 '
+                                        'http://www.ivoa.net/xml/VOEvent/VOEvent-v2.0.xsd',
+                 'Description': 'Report of a candidate gravitational wave '
+                                'event',
+                 'How': {'Description': ['Candidate gravitational wave event '
+                                         'identified by low-latency analysis',
+                                         'H1: LIGO Hanford 4 km gravitational '
+                                         'wave detector',
+                                         'L1: LIGO Livingston 4 km '
+                                         'gravitational wave detector']},
+                 'What': {'Group': [{'@name': 'GW_SKYMAP',
+                                     '@type': 'GW_SKYMAP',
+                                     'Param': {'@dataType': 'string',
+                                               '@name': 'skymap_fits',
+                                               '@ucd': 'meta.ref.url',
+                                               '@value': 'https://gracedb.ligo.org/api/superevents/MS250923s/files/bayestar.multiorder.fits,0',
+                                               'Description': 'Sky Map FITS'}},
+                                    {'@name': 'Classification',
+                                     '@type': 'Classification',
+                                     'Description': 'Source classification: '
+                                                    'binary neutron star '
+                                                    '(BNS), neutron star-black '
+                                                    'hole (NSBH), binary black '
+                                                    'hole (BBH), or '
+                                                    'terrestrial (noise)',
+                                     'Param': [{'@dataType': 'float',
+                                                '@name': 'BNS',
+                                                '@ucd': 'stat.probability',
+                                                '@value': '0.999997502466231',
+                                                'Description': 'Probability '
+                                                               'that the '
+                                                               'source is a '
+                                                               'binary neutron '
+                                                               'star merger '
+                                                               '(both objects '
+                                                               'lighter than 3 '
+                                                               'solar masses)'},
+                                               {'@dataType': 'float',
+                                                '@name': 'NSBH',
+                                                '@ucd': 'stat.probability',
+                                                '@value': '0.0',
+                                                'Description': 'Probability '
+                                                               'that the '
+                                                               'source is a '
+                                                               'neutron '
+                                                               'star-black '
+                                                               'merger '
+                                                               '(secondary '
+                                                               'lighter than 3 '
+                                                               'solar masses)'},
+                                               {'@dataType': 'float',
+                                                '@name': 'BBH',
+                                                '@ucd': 'stat.probability',
+                                                '@value': '0.0',
+                                                'Description': 'Probability '
+                                                               'that the '
+                                                               'source is a '
+                                                               'binary black '
+                                                               'hole merger '
+                                                               '(both objects '
+                                                               'heavier than 3 '
+                                                               'solar masses)'},
+                                               {'@dataType': 'float',
+                                                '@name': 'Terrestrial',
+                                                '@ucd': 'stat.probability',
+                                                '@value': '2.497533769112058e-06',
+                                                'Description': 'Probability '
+                                                               'that the '
+                                                               'source is '
+                                                               'terrestrial '
+                                                               '(i.e., a '
+                                                               'background '
+                                                               'noise '
+                                                               'fluctuation or '
+                                                               'a glitch)'}]},
+                                    {'@name': 'Properties',
+                                     '@type': 'Properties',
+                                     'Description': 'Qualitative properties of '
+                                                    'the source, conditioned '
+                                                    'on the assumption that '
+                                                    'the signal is an '
+                                                    'astrophysical compact '
+                                                    'binary merger',
+                                     'Param': [{'@dataType': 'float',
+                                                '@name': 'HasNS',
+                                                '@ucd': 'stat.probability',
+                                                '@value': '1.0',
+                                                'Description': 'Probability '
+                                                               'that at least '
+                                                               'one object in '
+                                                               'the binary has '
+                                                               'a mass that is '
+                                                               'less than 3 '
+                                                               'solar masses'},
+                                               {'@dataType': 'float',
+                                                '@name': 'HasRemnant',
+                                                '@ucd': 'stat.probability',
+                                                '@value': '1.0',
+                                                'Description': 'Probability '
+                                                               'that a nonzero '
+                                                               'mass was '
+                                                               'ejected '
+                                                               'outside the '
+                                                               'central '
+                                                               'remnant '
+                                                               'object'},
+                                               {'@dataType': 'float',
+                                                '@name': 'HasMassGap',
+                                                '@ucd': 'stat.probability',
+                                                '@value': '0.0',
+                                                'Description': 'Probability '
+                                                               'that the '
+                                                               'source has at '
+                                                               'least one '
+                                                               'object between '
+                                                               '3 and 5 solar '
+                                                               'masses'}]}],
+                          'Param': [{'@dataType': 'int',
+                                     '@name': 'Packet_Type',
+                                     '@value': '150',
+                                     'Description': 'The Notice Type number is '
+                                                    'assigned/used within GCN, '
+                                                    'eg type=150 is an '
+                                                    'LVC_PRELIMINARY notice'},
+                                    {'@dataType': 'int',
+                                     '@name': 'internal',
+                                     '@value': '0',
+                                     'Description': 'Indicates whether this '
+                                                    'event should be '
+                                                    'distributed to '
+                                                    'LSC/Virgo/KAGRA members '
+                                                    'only'},
+                                    {'@dataType': 'int',
+                                     '@name': 'Pkt_Ser_Num',
+                                     '@value': '1',
+                                     'Description': 'A number that increments '
+                                                    'by 1 each time a new '
+                                                    'revision is issued for '
+                                                    'this event'},
+                                    {'@dataType': 'string',
+                                     '@name': 'GraceID',
+                                     '@ucd': 'meta.id',
+                                     '@value': 'MS250923s',
+                                     'Description': 'Identifier in GraceDB'},
+                                    {'@dataType': 'string',
+                                     '@name': 'AlertType',
+                                     '@ucd': 'meta.version',
+                                     '@value': 'Preliminary',
+                                     'Description': 'VOEvent alert type'},
+                                    {'@dataType': 'int',
+                                     '@name': 'HardwareInj',
+                                     '@ucd': 'meta.number',
+                                     '@value': '0',
+                                     'Description': 'Indicates that this event '
+                                                    'is a hardware injection '
+                                                    'if 1, no if 0'},
+                                    {'@dataType': 'int',
+                                     '@name': 'OpenAlert',
+                                     '@ucd': 'meta.number',
+                                     '@value': '1',
+                                     'Description': 'Indicates that this event '
+                                                    'is an open alert if 1, no '
+                                                    'if 0'},
+                                    {'@dataType': 'string',
+                                     '@name': 'EventPage',
+                                     '@ucd': 'meta.ref.url',
+                                     '@value': 'https://gracedb.ligo.org/superevents/MS250923s/view/',
+                                     'Description': 'Web page for evolving '
+                                                    'status of this GW '
+                                                    'candidate'},
+                                    {'@dataType': 'string',
+                                     '@name': 'Instruments',
+                                     '@ucd': 'meta.code',
+                                     '@value': 'H1,L1',
+                                     'Description': 'List of instruments used '
+                                                    'in analysis to identify '
+                                                    'this event'},
+                                    {'@dataType': 'float',
+                                     '@name': 'FAR',
+                                     '@ucd': 'arith.rate;stat.falsealarm',
+                                     '@unit': 'Hz',
+                                     '@value': '9.110699364861297e-14',
+                                     'Description': 'False alarm rate for GW '
+                                                    'candidates with this '
+                                                    'strength or greater'},
+                                    {'@dataType': 'int',
+                                     '@name': 'Significant',
+                                     '@ucd': 'meta.number',
+                                     '@value': '1',
+                                     'Description': 'Indicates that this event '
+                                                    'is significant if 1, no '
+                                                    'if 0'},
+                                    {'@dataType': 'string',
+                                     '@name': 'Group',
+                                     '@ucd': 'meta.code',
+                                     '@value': 'CBC',
+                                     'Description': 'Data analysis working '
+                                                    'group'},
+                                    {'@dataType': 'string',
+                                     '@name': 'Pipeline',
+                                     '@ucd': 'meta.code',
+                                     '@value': 'gstlal',
+                                     'Description': 'Low-latency data analysis '
+                                                    'pipeline'},
+                                    {'@dataType': 'string',
+                                     '@name': 'Search',
+                                     '@ucd': 'meta.code',
+                                     '@value': 'MDC',
+                                     'Description': 'Specific low-latency '
+                                                    'search'}]},
+                 'WhereWhen': {'ObsDataLocation': {'ObservationLocation': {'AstroCoordSystem': {'@id': 'UTC-FK5-GEO'},
+                                                                           'AstroCoords': {'@coord_system_id': 'UTC-FK5-GEO',
+                                                                                           'Time': {'@unit': 's',
+                                                                                                    'TimeInstant': {'ISOTime': '2025-09-23T17:48:25.577502Z'}}}},
+                                                   'ObservatoryLocation': {'@id': 'LIGO '
+                                                                                  'Virgo'}}},
+                 'Who': {'Author': {'contactName': 'LIGO Scientific '
+                                                   'Collaboration, Virgo '
+                                                   'Collaboration, and KAGRA '
+                                                   'Collaboration'},
+                         'Date': '2025-09-23T18:04:45Z'}}}
