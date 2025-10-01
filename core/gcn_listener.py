@@ -29,7 +29,8 @@ consumer.subscribe([
                     'gcn.classic.voevent.FERMI_POINTDIR',
                     'gcn.classic.voevent.ICECUBE_ASTROTRACK_BRONZE',
                     'gcn.classic.voevent.ICECUBE_ASTROTRACK_GOLD',
-                    'gcn.classic.voevent.ICECUBE_CASCADE'
+                    'gcn.classic.voevent.ICECUBE_CASCADE',
+                    'gcn.notices.icecube.lvk_nu_track_search'
                     # 'gcn.classic.voevent.LVC_COUNTERPART',
                     # 'gcn.classic.voevent.LVC_EARLY_WARNING',
                     # 'gcn.classic.voevent.LVC_INITIAL',
@@ -57,7 +58,8 @@ while True:
         print(dictionary)
         print("\n")
         pprint.pprint(dictionary)
-
-        with open(f"./gcn_notices/{datetime.datetime.now()}.xml", "wb") as f:
-            f.write(value)
+        
+        if xml_root.attrib.get("role") != "test":
+            with open(f"./gcn_notices/{datetime.datetime.now()}.xml", "wb") as f:
+                f.write(value)
 

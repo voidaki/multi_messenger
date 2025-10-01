@@ -199,7 +199,9 @@ class HealPixSkymap():
         return (self.distnorm[ipix]*norm.pdf(r, loc=self.distmu[ipix], scale=self.distsigma[ipix])).to_value(u.Mpc**-2)
 
     # def skymap_integral(gwskymap, neutrino_list):
-    #     import healpy as hp
+    #     import healpy as hp    def partial_product(skymap1, skymap2):
+        i = 0 # FIXME
+        return skymap1[i]*skymap2[i]
     #     import astropy.units as u
 
     #     pix_area = hp.nside2pixarea(gwskymap.nside)*u.sr
@@ -220,10 +222,7 @@ class HealPixSkymap():
         """
         import astropy.units as u
         return 1
-    
-    def partial_product(skymap1, skymap2):
-        i = 0 # FIXME
-        return skymap1[i]*skymap2[i]
+
     
     def neutrinoskymap(self, ra, dec, sigma, normalize=True):
         """Returns PartialUniqSkymap of the neutrino detection as
@@ -258,21 +257,25 @@ class HealPixSkymap():
                 data = {'IPIX': self.ipix, 'PIXELS': self.pixels}
         return QTable(data)
 
-    def plot(self, neutrino_list=None):
+    def plot(self, neutrino_list=None, grb=None):
         import matplotlib.pyplot as plt
-        if neutrino_list is None:
+        if neutrino_list is None and grb is None:
             from hpmoc import plot
             if self.moc:
                 plot.plot((self.pixels, self.uniq))
             else:
                 plot.plot(self.pixels)
-        else:
+        elif neutrino_list is not None and grb is None:
             from hpmoc.plotters import mollview, PointsTuple
             import warnings
             warnings.filterwarnings("ignore",message=".*edgecolor.*for an unfilled marker.*")
             points = [(neutrino.ra, neutrino.dec, neutrino.sigma) for neutrino in neutrino_list]
             neutrino_points = PointsTuple(points, label=(f"neutrino {i}" for i in range(len(neutrino_list))))
             mollview(self.pixels, neutrino_points, rot=(180.0, 0., 0.), title=self.title)
+        elif neutrino_list is None and grb is not None: # No neutrino, grb
+            pass
+        elif neutrino_list is not None and grb is not None: # Both neutrino and grb
+            pass
         plt.show()
 
 # class HealPixSkyMap():
@@ -345,10 +348,29 @@ def Aeff_skymap(epsilon, skymap=None):
     if skymap is not None:
         if aeff_skymap.nside == skymap.nside:
             return aeff_skymap
-        elif aeff_skymap.nside < skymap.nside:
+        else:
             import healpy as hp
             pix = hp.ud_grade(aeff_skymap.pixels, nside_out=skymap.nside, order_in='NESTED', order_out='NESTED', power=0.0)
             return HealPixSkymap(pix, moc=False)
     else:
         return aeff_skymap
 
+def GRB_skymap(fits=None, healpix_url=None, skymap=None):
+    "Returns a GRB skymap as a HealpixSkymap instance."
+    if healpix_url is not None:
+        from astropy.utils.data import download_file
+        fits = download_file(healpix_url)
+
+    if fits is None:
+        print("This function requires a fits file or fits file url.")
+        return None
+    else:
+        from astropy.table import QTable
+        grb_skymap = QTable.read(fits, cache=True)
+        prob_pixels = grb_skymap["PROBABILITY"].flatten()
+        if skymap is not None:
+            import healpy as hp
+            pix = hp.ud_grade(prob_pixels, nside_out=skymap.nside, order_in='NESTED', order_out='NESTED', power=0.0)
+            return HealPixSkymap(pix)
+        else:
+            return HealPixSkymap(prob_pixels)
