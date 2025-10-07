@@ -50,7 +50,28 @@ class HealPixSkymap():
 
         return HealPixSkymap(pixels, distmu, distsigma, distnorm, uniq, moc=moc)
 
+    def load_from_url(url, moc=True):
+        """Load gravitational wave skymaps from url."""
+        import numpy as np
+        from astropy.utils.data import download_file
+        from astropy.table import QTable
+
+        file = download_file(url, cache=True)
+        skymap = QTable.read(file)
+
+        pixels = skymap["PROBDENSITY"] # 1 / sr
+        distmu = skymap["DISTMU"]
+        distsigma = skymap["DISTSIGMA"]
+        distnorm = skymap["DISTNORM"]
+        if moc:
+            uniq = np.array(skymap["UNIQ"])
+        else:
+            uniq = None
+
+        return HealPixSkymap(pixels, distmu, distsigma, distnorm, uniq, moc=moc)
+
     def load_from_graceid(graceid, moc=True):
+        """Load gravitational wave skymaps from graceid."""
         from data_loading import retrieve_event
         import numpy as np
 
@@ -278,43 +299,6 @@ class HealPixSkymap():
             pass
         plt.show()
 
-# class HealPixSkyMap():
-#     def __init__(self, skymap, moc=True, nest=True):
-#         """Take the skymap QTable and initialize it as a class.
-#         moc: boolean
-#             True for rasterization from UNIQ to NESTED"""
-#         import numpy as np
-#         import astropy_healpix as ah
-
-#         self.uniq = np.array(skymap["UNIQ"])
-#         self.prob = skymap["PROBDENSITY"]
-#         self.distmu = skymap["DISTMU"]
-#         self.distsigma = skymap["DISTSIGMA"]
-#         self.distnorm = skymap["DISTNORM"]
-#         self.nest = nest
-
-#         level, ipix = ah.uniq_to_level_ipix(self.uniq)
-#         if moc:
-#             nside = ah.level_to_nside(level) # Lateralization from UNIQ to NESTED
-#             self.nside = nside
-#             self.ipix = ipix
-
-#     def nside2ang(self):
-#         import healpy as hp
-#         import numpy as np
-#         ra, dec = hp.pix2ang(self.nside, self.ipix,
-#                           nest=self.nest, lonlat=True)
-
-#         return np.array(ra), np.array(dec)
-
-    
-#     def neutrinoskymap(self, ra, dec, sigma, normalize=True):
-#         from hpmoc.psf import psf_gaussian
-
-#         nu_partial = psf_gaussian(ra, dec, sigma, nside=max(self.nside)) # Create a PartialUniqSkymap
-#         nu_nested = nu_partial.fill(nside=max(self.nside),pad=1e-30, as_skymap=True) # Rasterize, UNIQ to NESTED
-#         return nu_nested
-
 
 def emptyskymap(val, skymap):
     import healpy as hp
@@ -350,12 +334,13 @@ def Aeff_skymap(epsilon, skymap=None):
             return aeff_skymap
         else:
             import healpy as hp
-            pix = hp.ud_grade(aeff_skymap.pixels, nside_out=skymap.nside, order_in='NESTED', order_out='NESTED', power=0.0)
+            pix = hp.ud_grade(aeff_skymap.pixels, nside_out=skymap.nside, order_in='NESTED', order_out='NESTED', power=-2)
             return HealPixSkymap(pix, moc=False)
     else:
         return aeff_skymap
 
-def GRB_skymap(fits=None, healpix_url=None, skymap=None):
+
+def GRB_skymap_subthresh(fits=None, healpix_url=None, skymap=None):
     "Returns a GRB skymap as a HealpixSkymap instance."
     if healpix_url is not None:
         from astropy.utils.data import download_file
@@ -374,3 +359,26 @@ def GRB_skymap(fits=None, healpix_url=None, skymap=None):
             return HealPixSkymap(pix)
         else:
             return HealPixSkymap(prob_pixels)
+
+
+def GRB_skymap(hdul=None, fits_url=None, skymap=None):
+    from reproject import reproject_to_healpix
+    if fits_url is not None:
+        from astropy.utils.data import download_file
+        from astropy.io import fits
+        filename = download_file(fits_url, cache=True)
+        hdul = fits.open(filename)
+    
+    if hdul is None:
+        print("This function requires a fits file or fits file url.")
+        return None
+    
+    pixels, footprint = reproject_to_healpix(
+        hdul['PMAP'],
+        coord_system_out='icrs',
+        nside=256,
+        nested=True,
+        hdu_in=1
+    )
+
+    return HealPixSkymap(pixels, moc=False)

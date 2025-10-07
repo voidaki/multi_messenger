@@ -347,172 +347,167 @@ def gw_event():
 gw_skymap_path = Path("/home/aki/snakepit/multi_messenger_astro/data/gw_data/LVK_skymaps/o4a/S230920al_Bilby.multiorder.fits")
 skymap = HealPixSkymap.load_locally(gw_skymap_path, burst=False).rasterize(as_skymap=True)
 print(skymap.nside)
-# graceid = gw_skymap_path.name.split('_')[0]
+graceid = gw_skymap_path.name.split('_')[0]
 neutrino_list = [IceCubeNeutrino(time_mjd, 240.0, -15.0, 1.2, 10**4.5), IceCubeNeutrino(time_mjd, 260.0, -17.0, 1.5, 10**4.5)]
-# far_path = false_alarm_rate_path / (graceid + "_far.npy")
-# far = np.load(far_path)
-# from coincidence_sig import signal_likelihood
-# import time
+far_path = false_alarm_rate_path / (graceid + "_far.npy")
+far = np.load(far_path)
+from coincidence_sig import signal_likelihood
+import time
 
-# start_time = time.time()
-# sl_unoptimized = signal_likelihood(time_gps, skymap, far, neutrino_list)
-# unoptimized_time = time.time()
-# print(f"signal without the optimization: {sl_unoptimized}, time it took: {unoptimized_time - start_time}")
+start_time = time.time()
+sl_unoptimized = signal_likelihood(time_gps, skymap, far, neutrino_list)
+unoptimized_time = time.time()
+print(f"signal without the optimization: {sl_unoptimized}, time it took: {unoptimized_time - start_time}")
 
-# from coincidence_sig_v2 import signal_likelihood
+from coincidence_sig_v2 import signal_likelihood
 
-# new_time = time.time()
-# sl_optimized = signal_likelihood(time_gps, skymap, far, neutrino_list)
-# optimized_time = time.time()
-# print(f"signal with the optimization: {sl_unoptimized}, time it took: {optimized_time - new_time}")
+new_time = time.time()
+sl_optimized = signal_likelihood(time_gps, skymap, far, neutrino_list)
+optimized_time = time.time()
+print(f"signal with the optimization: {sl_unoptimized}, time it took: {optimized_time - new_time}")
 
-# import glob, os
+import glob, os
 
-# from utils import Aeff, expnu, expnu_new
-# from skymap import Aeff_skymap
-# from scipy.integrate import quad,dblquad
-# from scipy.stats import poisson
+from utils import Aeff, expnu, expnu_new
+from skymap import Aeff_skymap
+from scipy.integrate import quad,dblquad
+from scipy.stats import poisson
 
-# def expected_neutrinos(dec, search_params=search_params):
-#     epsilon_bins = np.array(epsilon_dict())  # log10(E/GeV), e.g. [2.0, 2.2, 2.4, ..., 8.0]
-#     epsilon_vals = 10**((epsilon_bins[:-1] + epsilon_bins[1:]) / 2)  # bin centers in GeV
-#     delta_eps = 10**epsilon_bins[1:] - 10**epsilon_bins[:-1]  # bin widths in GeV
+def expected_neutrinos(dec, search_params=search_params):
+    epsilon_bins = np.array(epsilon_dict())  # log10(E/GeV), e.g. [2.0, 2.2, 2.4, ..., 8.0]
+    epsilon_vals = 10**((epsilon_bins[:-1] + epsilon_bins[1:]) / 2)  # bin centers in GeV
+    delta_eps = 10**epsilon_bins[1:] - 10**epsilon_bins[:-1]  # bin widths in GeV
 
-#     aeff_vals = np.array([Aeff(eps, dec, search_params) for eps in epsilon_vals])
-#     integrand_vals = aeff_vals * epsilon_vals**-2
+    aeff_vals = np.array([Aeff(eps, dec, search_params) for eps in epsilon_vals])
+    integrand_vals = aeff_vals * epsilon_vals**-2
 
-#     integral = np.sum(integrand_vals * delta_eps)
-#     return integral
+    integral = np.sum(integrand_vals * delta_eps)
+    return integral
 
-# def integrant(r, dec):
-#     Enu = 10.**49
-#     return poisson.pmf(3.0, expnu_new(r, Enu, dec, search_params))
+def integrant(r, dec):
+    Enu = 10.**49
+    return poisson.pmf(3.0, expnu_new(r, Enu, dec, search_params))
 
-# def PNnu(gw_skymap, Nnu, search_params=search_params):
-#     Mpc_to_cm = 3.085677581e24
-#     erg_to_GeV = 624.1509074
-#     mu_fraction = 1.0/3.0
-#     Enu = 10.**49
+def PNnu(gw_skymap, Nnu, search_params=search_params):
+    Mpc_to_cm = 3.085677581e24
+    erg_to_GeV = 624.1509074
+    mu_fraction = 1.0/3.0
+    Enu = 10.**49
 
-#     filepath = "/home/aki/snakepit/multi_messenger_astro/core/expnu_dec.npy"
-#     data =  np.load(filepath, allow_pickle=True).item()
-#     dec_bins = data["dec_bins"]
-#     integral_vals = data["integrals"]
+    filepath = "/home/aki/snakepit/multi_messenger_astro/core/expnu_dec.npy"
+    data =  np.load(filepath, allow_pickle=True).item()
+    dec_bins = data["dec_bins"]
+    integral_vals = data["integrals"]
 
-#     def expnu_dec(dec_array):
-#         flat_dec = dec_array.flatten()
-#         idxs = [np.abs(dec_bins - d).argmin() for d in flat_dec]
-#         result = np.array([integral_vals[i] for i in idxs])
-#         return result.reshape(dec_array.shape)
+    def expnu_dec(dec_array):
+        flat_dec = dec_array.flatten()
+        idxs = [np.abs(dec_bins - d).argmin() for d in flat_dec]
+        result = np.array([integral_vals[i] for i in idxs])
+        return result.reshape(dec_array.shape)
     
-#     dec_vals = np.array((dec_bins[:-1] + dec_bins[1:]) / 2)
-#     delta_dec = (dec_bins[1:] - dec_bins[:-1])[0]
+    dec_vals = np.array((dec_bins[:-1] + dec_bins[1:]) / 2)
+    delta_dec = (dec_bins[1:] - dec_bins[:-1])[0]
 
-#     r_vals = np.linspace(1.0, 700., 500)
-#     delta_r = float((700.0-1.0)/500)
+    r_vals = np.linspace(1.0, 700., 500)
+    delta_r = float((700.0-1.0)/500)
 
-#     def inner(r, dec):
-#         return Enu*erg_to_GeV*search_params.fb*mu_fraction/(4*np.pi*np.log(search_params.epsilonmax/search_params.epsilonmin))*Mpc_to_cm**-2*r**-2*expnu_dec(dec)
-#     def integrant(dec, r):
-#         return poisson.pmf(Nnu, inner(r, dec))
+    def inner(r, dec):
+        return Enu*erg_to_GeV*search_params.fb*mu_fraction/(4*np.pi*np.log(search_params.epsilonmax/search_params.epsilonmin))*Mpc_to_cm**-2*r**-2*expnu_dec(dec)
+    def integrant(dec, r):
+        return poisson.pmf(Nnu, inner(r, dec))
 
-#     dec_grid, r_grid = np.meshgrid(dec_vals, r_vals, indexing='ij')
-#     integral_vals = integrant(dec_grid, r_grid)
-#     print(np.sum(integral_vals))
-#     total = np.sum(integral_vals)*delta_dec*delta_r
-#     return total
+    dec_grid, r_grid = np.meshgrid(dec_vals, r_vals, indexing='ij')
+    integral_vals = integrant(dec_grid, r_grid)
+    print(np.sum(integral_vals))
+    total = np.sum(integral_vals)*delta_dec*delta_r
+    return total
 
-# from utils import expnu_new, Aeff
-# decvals = np.linspace(-90., 90., 180)
-# ddec = np.deg2rad(decvals[1] - decvals[0]) 
-# expnus = [expnu_new(100., 1.e51, dec, search_params)*np.cos(np.deg2rad(dec)) for dec in decvals]
+from utils import expnu_new, Aeff
+decvals = np.linspace(-90., 90., 180)
+ddec = np.deg2rad(decvals[1] - decvals[0]) 
+expnus = [expnu_new(100., 1.e51, dec, search_params)*np.cos(np.deg2rad(dec)) for dec in decvals]
 
-# print(np.sum(expnus)*ddec/2)
-# plt.plot(decvals, expnus)
-# plt.show()
+print(np.sum(expnus)*ddec/2)
+plt.plot(decvals, expnus)
+plt.show()
 
-# Mpc_to_cm = 3.085677581e24
-# erg_to_GeV = 624.1509074
-# Enu = 1.e51*erg_to_GeV
-# r = 100.*Mpc_to_cm
-# epsilon_bins = np.array(epsilon_dict()) 
-# epsilon_vals = 10**((epsilon_bins[:-1] + epsilon_bins[1:]) / 2)
-# delta_eps = 10**epsilon_bins[1:] - 10**epsilon_bins[:-1]
-# Aeff_vals = [Aeff(epsilon, 0.0, search_params)*epsilon**-2 for epsilon in epsilon_vals ]
-# int_vals = Aeff_vals*delta_eps*Enu/(4.0*np.pi)/13.8*r**-2
-# print(np.sum(int_vals))
-# plt.plot(epsilon_vals ,Aeff_vals)   
-# plt.xscale('log')
-# plt.yscale('log')
-# plt.show()
+Mpc_to_cm = 3.085677581e24
+erg_to_GeV = 624.1509074
+Enu = 1.e51*erg_to_GeV
+r = 100.*Mpc_to_cm
+epsilon_bins = np.array(epsilon_dict()) 
+epsilon_vals = 10**((epsilon_bins[:-1] + epsilon_bins[1:]) / 2)
+delta_eps = 10**epsilon_bins[1:] - 10**epsilon_bins[:-1]
+Aeff_vals = [Aeff(epsilon, 0.0, search_params)*epsilon**-2 for epsilon in epsilon_vals ]
+int_vals = Aeff_vals*delta_eps*Enu/(4.0*np.pi)/13.8*r**-2
+print(np.sum(int_vals))
+plt.plot(epsilon_vals ,Aeff_vals)   
+plt.xscale('log')
+plt.yscale('log')
+plt.show()
 
-# print("Null statistics plotting, p-value testing")
-# print(">-----------------------------------------<")
+print("Null statistics plotting, p-value testing")
+print(">-----------------------------------------<")
 
-# directory = '/home/aki/snakepit/multi_messenger_astro/core/noncwb'
-# teststat_dir = '/home/aki/snakepit/multi_messenger_astro/core/testnoncwb'
+directory = '/home/aki/snakepit/multi_messenger_astro/core/noncwb'
+teststat_dir = '/home/aki/snakepit/multi_messenger_astro/core/testnoncwb'
 
-# file_list = sorted(glob.glob(os.path.join(directory, '*.npy')))
-# test_files = sorted(glob.glob(os.path.join(directory, '*.npy')))
+file_list = sorted(glob.glob(os.path.join(directory, '*.npy')))
+test_files = sorted(glob.glob(os.path.join(directory, '*.npy')))
 
-# # Load and concatenate
-# all_null_stats = np.concatenate([np.load(f) for f in file_list])
-# all_null_stats = all_null_stats[all_null_stats <= 1.0]
-# # all_null_stats = all_null_stats[all_null_stats != 0]
-# all_test_stats = np.concatenate([np.load(f) for f in test_files])
-# # all_test_stats = all_test_stats[all_test_stats != 0]
+# Load and concatenate
+all_null_stats = np.concatenate([np.load(f) for f in file_list])
+all_null_stats = all_null_stats[all_null_stats <= 1.0]
+# all_null_stats = all_null_stats[all_null_stats != 0]
+all_test_stats = np.concatenate([np.load(f) for f in test_files])
+# all_test_stats = all_test_stats[all_test_stats != 0]
 
-# print(f"Loaded {len(file_list)} files.")
-# print(f"Total null statistics: {len(all_null_stats)}")
+print(f"Loaded {len(file_list)} files.")
+print(f"Total null statistics: {len(all_null_stats)}")
 
-# threshold = 1e-40
-# null_stats_thresholded = np.where(all_null_stats < threshold, 0, all_null_stats)
-# epsilon = 1e-40
-# null_stats_clipped = np.clip(null_stats_thresholded, epsilon, None)
-# print(null_stats_clipped)
+threshold = 1e-40
+null_stats_thresholded = np.where(all_null_stats < threshold, 0, all_null_stats)
+epsilon = 1e-40
+null_stats_clipped = np.clip(null_stats_thresholded, epsilon, None)
+print(null_stats_clipped)
 
-# n_zeros = np.sum(null_stats_clipped == 0)
-# print(f"Number of zero statistics (≤ 1e-40): {n_zeros}")
+n_zeros = np.sum(null_stats_clipped == 0)
+print(f"Number of zero statistics (≤ 1e-40): {n_zeros}")
 
-# log_null_stats = -np.log10(null_stats_clipped)
-# print(log_null_stats)
+log_null_stats = -np.log10(null_stats_clipped)
+print(log_null_stats)
 
-# # Plot histogram
-# import matplotlib.pyplot as plt
-
-# p_values = np.array([p_value(test_stat, all_null_stats) for test_stat in all_test_stats])
-
-# bins = np.logspace(-40, -18, 50)
-
-# plt.figure(figsize=(8, 5))
-# plt.hist(null_stats_clipped, bins=bins, color='goldenrod', edgecolor='black')
-# # plt.hist(p_values, bins=20, color='red', edgecolor='black')
-# plt.xlabel("Test Statistic")
-# plt.ylabel('Frequency')
-# plt.xscale('log')
-# # plt.title('Distribution of p-values for random events')
-# # plt.xlabel('p-value')
-# plt.ylabel('Frequency')
-# plt.title('Distribution of Null Statistics')
-# plt.grid(True)
-# plt.show()
-
-"""GBM/GRB skymaps"""
-grb_real_url = "https://gcn.gsfc.nasa.gov/notices_gbm_sub/gbm_subthresh_780770594.088000_healpix.fits"
-from astropy.utils.data import download_file
-from astropy.table import QTable
+# Plot histogram
 import matplotlib.pyplot as plt
-import astropy.units as u
 
-filename = download_file(grb_real_url, cache=True)
-grb_skymap = QTable.read(filename)
-print(grb_skymap)
-grb_pixels = grb_skymap["PROBABILITY"].flatten()
-pix_area = skymap.nside2pixarea()
-skymap.pixels = (skymap.pixels*pix_area).to(u.dimensionless_unscaled).value
-print(len(grb_pixels))
-grb_real = HealPixSkymap(grb_pixels, moc=False)
-print(12*grb_real.nside**2, grb_real.nside2npix())
-skymap = skymap.rasterize(grb_real.nside, as_skymap=True)
-print(skymap.nside)
-skymap.plot(grb=grb_real)
+p_values = np.array([p_value(test_stat, all_null_stats) for test_stat in all_test_stats])
+
+bins = np.logspace(-40, -18, 50)
+
+plt.figure(figsize=(8, 5))
+plt.hist(null_stats_clipped, bins=bins, color='goldenrod', edgecolor='black')
+# plt.hist(p_values, bins=20, color='red', edgecolor='black')
+plt.xlabel("Test Statistic")
+plt.ylabel('Frequency')
+plt.xscale('log')
+# plt.title('Distribution of p-values for random events')
+# plt.xlabel('p-value')
+plt.ylabel('Frequency')
+plt.title('Distribution of Null Statistics')
+plt.grid(True)
+plt.show()
+
+# grb = HealPixSkymap(pixels, moc=False)
+# print(header)
+# grb.plot()
+# print(np.max(grb_skymap["SIGNIFICANCE"].flatten()))
+# grb_pixels = grb_skymap["PROBABILITY"].flatten()
+# pix_area = skymap.nside2pixarea()
+# skymap.pixels = (skymap.pixels*pix_area).to(u.dimensionless_unscaled).value
+# print(len(grb_pixels))
+# grb_real = HealPixSkymap(grb_pixels, moc=False)
+# grb_real.plot()
+# print(12*grb_real.nside**2, grb_real.nside2npix())
+# skymap = skymap.rasterize(grb_real.nside, as_skymap=True)
+# print(skymap.nside)
+# skymap.plot(grb=grb_real)

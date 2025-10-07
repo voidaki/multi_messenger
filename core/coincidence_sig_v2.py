@@ -285,9 +285,8 @@ def test_statistic(tgw: float, gw_skymap: HealPixSkymap, far: float,
         odds = (P_Hs*Phgwnu()) / ((P_H0nu*Ph0nu()) + (P_Hgw0*Phgw0()) + (P_Hn*Ph00()))
         if odds >= 1.0:
             odds = 0.0
-            pval = p_value(odds, null_stats)
-        else:
-            pval = p_value(odds, null_stats)
+            
+        pval = p_value(odds, null_stats)
         pvals = [pval for _ in range(len(neutrino_list))]
 
     if single_neutrino:

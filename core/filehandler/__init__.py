@@ -118,5 +118,5 @@ class VOEvent():
 # lcv_voevent = load_voevent("/home/aki/snakepit/multi_messenger_astro/core/gcn_notices/2025-09-24 21:38:25.948210.xml")
 # pprint(VOEvent.parse_lvc(lcv_voevent))
 
-icecube_voevent = load_voevent("/home/aki/snakepit/multi_messenger_astro/core/gcn_notices/2025-09-26 16:42:22.654483.xml")
-pprint(VOEvent.parse_icecube(icecube_voevent))
+# icecube_voevent = load_voevent("/home/aki/snakepit/multi_messenger_astro/core/gcn_notices/2025-09-26 16:42:22.654483.xml")
+# pprint(VOEvent.parse_icecube(icecube_voevent))
