@@ -354,17 +354,18 @@ far = np.load(far_path)
 from coincidence_sig import signal_likelihood
 import time
 
+
 start_time = time.time()
 sl_unoptimized = signal_likelihood(time_gps, skymap, far, neutrino_list)
 unoptimized_time = time.time()
-print(f"signal without the optimization: {sl_unoptimized}, time it took: {unoptimized_time - start_time}")
+print(f"signal without the distance: {sl_unoptimized}, time it took: {unoptimized_time - start_time}")
 
 from coincidence_sig_v2 import signal_likelihood
 
 new_time = time.time()
-sl_optimized = signal_likelihood(time_gps, skymap, far, neutrino_list)
+sl_optimized = signal_likelihood(time_gps, skymap, far, neutrino_list, False)
 optimized_time = time.time()
-print(f"signal with the optimization: {sl_unoptimized}, time it took: {optimized_time - new_time}")
+print(f"signal with the distance: {sl_optimized}, time it took: {optimized_time - new_time}")
 
 import glob, os
 
@@ -455,7 +456,8 @@ teststat_dir = '/home/aki/snakepit/multi_messenger_astro/core/testnoncwb'
 file_list = sorted(glob.glob(os.path.join(directory, '*.npy')))
 test_files = sorted(glob.glob(os.path.join(directory, '*.npy')))
 
-# Load and concatenate
+# Load and concatenatefrom skymap import expnu_skymap
+print(expnu_skymap)
 all_null_stats = np.concatenate([np.load(f) for f in file_list])
 all_null_stats = all_null_stats[all_null_stats <= 1.0]
 # all_null_stats = all_null_stats[all_null_stats != 0]

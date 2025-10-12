@@ -1,6 +1,6 @@
 """GBM/GRB skymaps"""
-# grb_real_url = "https://gcn.gsfc.nasa.gov/notices_gbm_sub/gbm_subthresh_780770594.088000_healpix.fits"
-grb_real_url = "http://gcn.gsfc.nasa.gov/notices_f/gbm_gnd_loc_map_780958803.fits"
+grb_real_url = "https://gcn.gsfc.nasa.gov/notices_gbm_sub/gbm_subthresh_780770594.088000_healpix.fits"
+# grb_real_url = "http://gcn.gsfc.nasa.gov/notices_f/gbm_gnd_loc_map_780958803.fits"
 import numpy as np
 from astropy.utils.data import download_file
 from astropy.table import QTable
@@ -16,7 +16,10 @@ from reproject import reproject_to_healpix
 from skymap import HealPixSkymap
 
 filename = download_file(grb_real_url, cache=True)
-# grb_skymap = QTable.read(filename)
+grb_skymap = QTable.read(filename)
+skymap = HealPixSkymap(grb_skymap["PROBABILITY"].flatten(), moc=False)
+print(len(skymap.pixels))
+skymap.plot()
 hdul = fits.open(filename)
 
 hpxmap, footprint = reproject_to_healpix(

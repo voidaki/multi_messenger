@@ -140,6 +140,10 @@ class HealPixSkymap():
     def ipix2uniq(self): 
         import numpy as np
         return self.ipix + np.full(len(self.pixels), 4*self.nside**2, dtype=int)
+    
+    def pix2ang(self):
+        from healpy import pix2ang
+        return pix2ang(self.nside, self.ipix, nest=True, lonlat=True)
 
     def rasterize(self, nside=None, pad=None, nest=True, as_skymap=False):
         """
@@ -221,8 +225,8 @@ class HealPixSkymap():
 
     # def skymap_integral(gwskymap, neutrino_list):
     #     import healpy as hp    def partial_product(skymap1, skymap2):
-        i = 0 # FIXME
-        return skymap1[i]*skymap2[i]
+        # i = 0 # FIXME
+        # return skymap1[i]*skymap2[i]
     #     import astropy.units as u
 
     #     pix_area = hp.nside2pixarea(gwskymap.nside)*u.sr
@@ -338,6 +342,16 @@ def Aeff_skymap(epsilon, skymap=None):
             return HealPixSkymap(pix, moc=False)
     else:
         return aeff_skymap
+
+
+def expnu_skymap(nside, nu_indices, search_params): # works but 30 seconds per neutrino, too slow
+    from numpy import vectorize
+    from healpy import pix2ang
+    from utils import expnu_dec
+
+    _, dec = pix2ang(nside, nu_indices, nest=True, lonlat=True)
+    expnu_dec_vec = vectorize(expnu_dec)
+    return expnu_dec_vec(dec, search_params)
 
 
 def GRB_skymap_subthresh(fits=None, healpix_url=None, skymap=None):

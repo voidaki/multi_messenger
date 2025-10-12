@@ -11,6 +11,9 @@ from utils import (
     PEnu,
     Pfar,
     expnu,
+    expnu_new,
+    expnu_dec,
+    Pnu1,
     Pempfar,
     IceCubeLIGO,
     search_parameters,
@@ -54,7 +57,7 @@ def Phgwnu(search_params=search_parameters("bns")):
     return search_params.ndotgwnu
 
 
-def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns")): # FIXME add cbc check, if the superevent is burst or not
+def signal_likelihood(tgw, gw_skymap, far, neutrino_list, cwb, search_params=search_parameters("bns")): # FIXME add cbc check, if the superevent is burst or not
     """Returns the signal likelihood in eq (3) 
     
     Parameters
@@ -68,7 +71,7 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
     neutrino_list: list
         List of all neutrinos in the time frame, as IceCubeNeutrino instance
     search_params: Collection of constant search parameters for this model.
-    cbc: bool
+    cwb: bool
         Whether this is a CBC (compact binary coalescence) group trigger or a
         burst trigger. True for cbc group, false for unmodeled searches.
 
@@ -78,9 +81,10 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
         P(x|θ,H_s)P(θ|H_s) Integrated over all-sky and parameters
     """
 
+    import numpy as np
     from scipy.integrate import nquad
     import astropy.units as u
-    from scipy.stats import poisson
+    from scipy.stats import poisson, norm
 
     if len(neutrino_list) == 0:
         return 0.
@@ -90,12 +94,20 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
     nuskymaps = []
     Tobs = search_params.tgwplus - search_params.tgwminus
 
-    def Pθ_Hs(Enu, r):
-        "P(θ|H_s) for a single gravitational wave detection and Nnu number of neutrinos."
-        PHs_θ = (poisson.pmf(0, search_params.ratebggw*Tobs)*poisson.pmf(0, search_params.ratebgnu*Tobs)*poisson.pmf(Nnu, expnu(r, Enu, search_params))*
-                poisson.pmf(1, search_params.ndotgwnu*Tobs)*poisson.pmf(0, (search_params.ndotgw - search_params.ndotgwnu)*Tobs)*
-                poisson.pmf(0, (search_params.ndotnu - search_params.ndotgwnu)*Tobs))
-        return PEnu(Enu, search_params)*Pr(r, search_params)*sky_dist()*PHs_θ
+    if not cwb:
+        def Pθ_Hs(Enu, r):
+            "P(θ|H_s) for a single gravitational wave detection and Nnu number of neutrinos."
+            PHs_θ = (poisson.pmf(0, search_params.ratebggw*Tobs)*poisson.pmf(0, search_params.ratebgnu*Tobs)*
+                    poisson.pmf(1, search_params.ndotgwnu*Tobs)*poisson.pmf(0, (search_params.ndotgw - search_params.ndotgwnu)*Tobs)*
+                    poisson.pmf(0, (search_params.ndotnu - search_params.ndotgwnu)*Tobs))
+            return PEnu(Enu, search_params)*Pr(r, search_params)*sky_dist()*PHs_θ
+    else:
+        def Pθ_Hs(Enu, dec):
+            "P(θ|H_s) for a single gravitational wave detection and Nnu number of neutrinos."
+            PHs_θ = (poisson.pmf(0, search_params.ratebggw*Tobs)*poisson.pmf(0, search_params.ratebgnu*Tobs)*
+                    poisson.pmf(1, search_params.ndotgwnu*Tobs)*poisson.pmf(0, (search_params.ndotgw - search_params.ndotgwnu)*Tobs)*
+                    poisson.pmf(0, (search_params.ndotnu - search_params.ndotgwnu)*Tobs))
+            return PEnu(Enu, search_params)*Pr(1.0, search_params)*sky_dist()*PHs_θ    
     
     count = 0
     indices = []
@@ -115,9 +127,13 @@ def signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params=search_p
     allsky_integral = 0.0
     for i, nuskymap in enumerate(nuskymaps):
         gw_reduced = gw_skymap.reduce(indices[i])
+
+        # TODO add expnu_dec here for each pixel's declination angles and multiply with
+        exp_nu = Pnu1(gw_reduced, search_params)
+
         prob_dens = gw_reduced.pixels*nuskymap.pixels
         prob_map = (prob_dens*pix_area).to(u.dimensionless_unscaled).value
-        allsky_integral += prob_map.sum()*Pfar(far)
+        allsky_integral += prob_map.sum()*Pfar(far)*exp_nu
         
     denominator = (search_params.tgwplus - search_params.tgwminus) * (search_params.tnuplus - search_params.tnuminus)
     return allsky_integral/denominator
@@ -135,7 +151,7 @@ def SLwogw(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("
 
     def Pθ_H0nu(Enu, r):
         PHgw0_θ = (poisson.pmf(0, search_params.ratebgnu*Tobs)*poisson.pmf(1, search_params.ratebggw*Tobs)*
-                   poisson.pmf(Nnu, expnu(r, Enu, search_params))*poisson.pmf(0,search_params.ndotgwnu*Tobs)*
+                   poisson.pmf(Nnu, expnu_new(r, Enu, search_params))*poisson.pmf(0,search_params.ndotgwnu*Tobs)*
                    poisson.pmf(0, (search_params.ndotgw-search_params.ndotgwnu)*Tobs)*
                    poisson.pmf(Nnu, (search_params.ndotnu - search_params.ndotgwnu)*Tobs))
         return PEnu(Enu, search_params)*Pr(r, search_params)*sky_dist()*PHgw0_θ
@@ -156,20 +172,28 @@ def SLwogw(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("
 
     return allsky_integral/denominator
 
-def SLwonu(tgw, gw_skymap, far, neutrino_list, search_params=search_parameters("bns")):
+def SLwonu(tgw, gw_skymap, far, neutrino_list, cwb, search_params=search_parameters("bns")):
     """Returns the likelihood without neutrino, ie. noise neutrino."""
     from scipy.stats import poisson
     from scipy.integrate import nquad
 
     Nnu = len(neutrino_list)
     Tobs = search_params.tgwplus - search_params.tgwminus
-
-    def Pθ_Hgw0(Enu, r):
-        PHgw0_θ = (poisson.pmf(Nnu, search_params.ratebgnu*Tobs)*poisson.pmf(0, search_params.ratebggw*Tobs)*
-                   poisson.pmf(0, expnu(Enu,r, search_params))*poisson.pmf(0,search_params.ndotgwnu*Tobs)*
-                   poisson.pmf(1, (search_params.ndotgw-search_params.ndotgwnu)*Tobs)*
-                   poisson.pmf(0, (search_params.ndotnu - search_params.ndotgwnu)*Tobs))
-        return PEnu(Enu, search_params)*Pr(r, search_params)*sky_dist()*PHgw0_θ
+    
+    if not cwb:
+        def Pθ_Hgw0(Enu, r):
+            PHgw0_θ = (poisson.pmf(Nnu, search_params.ratebgnu*Tobs)*poisson.pmf(0, search_params.ratebggw*Tobs)*
+                    poisson.pmf(0, expnu_new(Enu,r, search_params))*poisson.pmf(0,search_params.ndotgwnu*Tobs)*
+                    poisson.pmf(1, (search_params.ndotgw-search_params.ndotgwnu)*Tobs)*
+                    poisson.pmf(0, (search_params.ndotnu - search_params.ndotgwnu)*Tobs))
+            return PEnu(Enu, search_params)*Pr(r, search_params)*sky_dist()*PHgw0_θ
+    else:
+        def P0_Hgw0(Enu):
+            PHgw0_θ = (poisson.pmf(Nnu, search_params.ratebgnu*Tobs)*poisson.pmf(0, search_params.ratebggw*Tobs)*
+                    poisson.pmf(0, expnu_new(Enu, 1.0, search_params))*poisson.pmf(0,search_params.ndotgwnu*Tobs)*
+                    poisson.pmf(1, (search_params.ndotgw-search_params.ndotgwnu)*Tobs)*
+                    poisson.pmf(0, (search_params.ndotnu - search_params.ndotgwnu)*Tobs))
+            return PEnu(Enu, search_params)*sky_dist()*PHgw0_θ
 
     null_nu_prob = 0
     for neutrino in neutrino_list:
@@ -277,8 +301,8 @@ def test_statistic(tgw: float, gw_skymap: HealPixSkymap, far: float,
 
     pvals = []
     if not single_neutrino:
-        P_Hs = signal_likelihood(tgw, gw_skymap, far, neutrino_list, search_params)
-        P_H0nu = SLwogw(tgw, gw_skymap, far, neutrino_list, search_params)
+        P_Hs = signal_likelihood(tgw, gw_skymap, far, neutrino_list, cwb, search_params)
+        P_H0nu = SLwogw(tgw, gw_skymap, far, neutrino_list, cwb, search_params)
         P_Hgw0 = SLwonu(tgw, gw_skymap, far, neutrino_list, search_params)
         P_Hn = null_likelihood(far, neutrino_list, search_params)
 
@@ -292,9 +316,9 @@ def test_statistic(tgw: float, gw_skymap: HealPixSkymap, far: float,
     if single_neutrino:
         for neutrino in neutrino_list:
             single_nu = [neutrino]
-            P_Hs = signal_likelihood(tgw, gw_skymap, far, single_nu, search_params)
+            P_Hs = signal_likelihood(tgw, gw_skymap, far, single_nu, cwb, search_params)
             P_H0nu = SLwogw(tgw, gw_skymap, far, single_nu, search_params)
-            P_Hgw0 = SLwonu(tgw, gw_skymap, far, single_nu, search_params)
+            P_Hgw0 = SLwonu(tgw, gw_skymap, far, single_nu, cwb, search_params)
             P_Hn = null_likelihood(far, single_nu, search_params)
             
             odds = (P_Hs*Phgwnu()) / ((P_H0nu*Ph0nu()) + (P_Hgw0*Phgw0()) + (P_Hn*Ph00()))

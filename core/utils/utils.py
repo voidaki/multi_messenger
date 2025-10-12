@@ -340,6 +340,23 @@ def PNnu(gw_skymap, Nnu, search_params):
     total = np.sum(integral_vals)*delta_dec*delta_r
     return total
 
+def Pnu1(gw_reduced, search_params):
+    from scipy.stats import norm
+    import numpy as np
+
+    # unitless_norm, unitless_mu, unitless_sigma = (gw_reduced.distnorm*u.Mpc**2).to_value, (gw_reduced.distmu/u.Mpc).to_value, (gw_reduced.distsigma/u.Mpc).to_value
+    gw_normal = norm(loc=gw_reduced.distmu.value, scale=gw_reduced.distsigma.value)
+    r_vals = np.linspace(np.min(gw_reduced.distmu.value), np.max(gw_reduced.distmu.value), len(gw_reduced.distmu))
+    dr = r_vals[1] - r_vals[0]
+    _, dec = gw_reduced.pix2ang()
+    expnu_vec = np.vectorize(expnu_new)
+    expnu_skymap = expnu_vec(1.0, 10**48, dec, search_params)
+
+    expnu_integral = 0
+    for r in r_vals:
+        expnu_integral += np.sum(gw_reduced.distnorm.value*gw_normal.pdf(r)*np.exp(expnu_skymap*r**-2)*expnu_skymap*r**-2)
+    
+    return expnu_integral*dr
 
 def expnu(r, Enu,  search_params):
     """Count of expected neutrinos."""
