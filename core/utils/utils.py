@@ -246,8 +246,15 @@ def Aeff(epsilon, declination, search_params):
     epsilon_index = np.searchsorted(epsilon_dict(), epsilon, side='right') - 1
     dec_index = np.searchsorted(angle_dict(), declination, side='right') - 1
     
-
-    row = df[(df['log10(E_nu/GeV)_min'] == np.array(epsilon_dict())[epsilon_index]) & (df['Dec_nu_min[deg]'] == np.array(angle_dict())[dec_index])]
+    # row = df[(df['log10(E_nu/GeV)_min'] == np.array(epsilon_dict())[epsilon_index]) & (df['Dec_nu_min[deg]'] == np.array(angle_dict())[dec_index])]
+    epsilons = np.array(epsilon_dict())[epsilon_index]
+    decs = np.array(angle_dict())[dec_index]
+    
+    mask = (
+        np.isclose(df['log10(E_nu/GeV)_min'], epsilons, atol=1e-6) &
+        df['Dec_nu_min[deg]'].isin(np.atleast_1d(decs))
+    )
+    row = df[mask]
 
     if not row.empty:
         return row.iloc[0]['A_Eff[cm^2]']
@@ -296,13 +303,21 @@ def expnu_new(r, Enu, dec, search_params):
     epsilon_bins = np.array(epsilon_dict()) 
     epsilon_vals = 10**((epsilon_bins[:-1] + epsilon_bins[1:]) / 2)
     delta_eps = 10**epsilon_bins[1:] - 10**epsilon_bins[:-1]
-    Aeff_vals = [Aeff(epsilon, dec, search_params)*epsilon**-2 for epsilon in epsilon_vals ]
+    Aeff_vals = np.array([Aeff(epsilon, dec, search_params)*epsilon**-2 for epsilon in epsilon_vals ])
 
     energy_norm = 13.8 # ln(epsilonmax/epsilonmin)
 
-    int_vals = Aeff_vals*delta_eps*Enu/(4.0*np.pi)/energy_norm*r**-2
+    # int_vals = Aeff_vals*delta_eps*Enu/(4.0*np.pi)/energy_norm*r**-2
+    int_vals = (
+        Aeff_vals[np.newaxis, :]   # shape (1, 40)
+        * delta_eps
+        * Enu      # shape (1, 40)
+        / (4.0 * np.pi)
+        / energy_norm
+        * r[:, np.newaxis]**-2     # shape (17143, 1)
+    )
 
-    return np.sum(int_vals)
+    return np.sum(int_vals, axis=1)
 
 
 def PNnu(gw_skymap, Nnu, search_params):

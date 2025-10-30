@@ -293,8 +293,8 @@ search_params=search_parameters("bns")
 # # skymap, tgw, far = retrieve_event('S250326y')
 from astropy.time import Time
 
-# # neutrino_list = [IceCubeNeutrino(Time(tgw-1.1, format='gps').mjd, 98.54, 54.1, 0.5, 4.2*10**4.2), 
-# #                  IceCubeNeutrino(Time(tgw+1.3, format='gps').mjd, 101.2, 62.9, 0.8, 3.3*10**5.5)]
+# neutrino_list = [IceCubeNeutrino(Time(tgw-1.1, format='gps').mjd, 98.54, 54.1, 0.5, 4.2*10**4.2), 
+#                  IceCubeNeutrino(Time(tgw+1.3, format='gps').mjd, 101.2, 62.9, 0.8, 3.3*10**5.5)]
 
 # # gw_skymap = HealPixSkymap.readQtable(skymap)
 # # print(gw_skymap.to_table())
